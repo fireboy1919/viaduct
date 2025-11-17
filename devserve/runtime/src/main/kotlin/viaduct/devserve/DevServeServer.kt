@@ -13,6 +13,7 @@ import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.request.receiveText
+import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
@@ -208,6 +209,30 @@ class DevServeServer(
             // GraphiQL IDE
             get("/graphiql") {
                 call.respondText(graphiQLHtml(), ContentType.Text.Html)
+            }
+
+            // Serve GraphiQL static resources (JS files for plugins)
+            get("/js/{file}") {
+                val file = call.parameters["file"]
+                if (file != null) {
+                    val resourcePath = "/graphiql/js/$file"
+                    val resourceStream = this::class.java.getResourceAsStream(resourcePath)
+
+                    if (resourceStream != null) {
+                        val content = resourceStream.bufferedReader().use { it.readText() }
+                        val contentType = when {
+                            file.endsWith(".js") -> ContentType.Text.JavaScript
+                            file.endsWith(".jsx") -> ContentType.Text.JavaScript
+                            else -> ContentType.Application.OctetStream
+                        }
+                        call.respondText(content, contentType)
+                    } else {
+                        loggerRef.warn("Static resource not found: $resourcePath")
+                        call.respond(HttpStatusCode.NotFound, "File not found: $file")
+                    }
+                } else {
+                    call.respond(HttpStatusCode.BadRequest, "File parameter missing")
+                }
             }
 
             // Root redirect to GraphiQL
