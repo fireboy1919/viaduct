@@ -39,6 +39,9 @@ class DevServeServer(
     private val logger = LoggerFactory.getLogger(DevServeServer::class.java)
     private val objectMapper: ObjectMapper = jacksonObjectMapper()
     private lateinit var viaduct: Viaduct
+    private var server: io.ktor.server.engine.EmbeddedServer<*, *>? = null
+    var actualPort: Int = 0
+        private set
 
     /**
      * Starts the development server.
@@ -79,16 +82,16 @@ class DevServeServer(
             val portRef = port
 
             // Start the server
-            val server = embeddedServer(Netty, port = portRef, host = hostRef) {
+            server = embeddedServer(Netty, port = portRef, host = hostRef) {
                 configureApplication(viaduct, loggerRef, mapperRef)
             }
 
             // Start server without blocking initially
-            server.start(wait = false)
+            server!!.start(wait = false)
 
             // Get the actual bound port from the resolved connectors
-            val actualPort = runBlocking {
-                server.engine.resolvedConnectors().first().port
+            actualPort = runBlocking {
+                (server!!.engine as io.ktor.server.netty.NettyApplicationEngine).resolvedConnectors().first().port
             }
 
             if (portRef == 0) {
@@ -101,8 +104,10 @@ class DevServeServer(
 
             // Add shutdown hook
             Runtime.getRuntime().addShutdownHook(Thread {
-                loggerRef.info("Shutting down Viaduct DevServe...")
-                server.stop(1000, 2000)
+                server?.let {
+                    loggerRef.info("Shutting down Viaduct DevServe...")
+                    it.stop(1000, 2000)
+                }
             })
 
             // Wait for the server to finish
@@ -111,6 +116,18 @@ class DevServeServer(
         } catch (e: Exception) {
             logger.error("Failed to start DevServe server", e)
             throw e
+        }
+    }
+
+    /**
+     * Stops the development server.
+     * Useful for testing and programmatic shutdown.
+     */
+    fun stop() {
+        server?.let {
+            logger.info("Stopping Viaduct DevServe...")
+            it.stop(1000, 2000)
+            server = null
         }
     }
 

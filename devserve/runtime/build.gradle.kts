@@ -122,7 +122,7 @@ val generateGraphiQL by tasks.registering {
             height: 100vh;
         }
     </style>
-    <link rel="stylesheet" href="https://unpkg.com/graphiql/graphiql.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/graphiql@2.4.7/graphiql.min.css" />
 </head>
 <body>
     <div id="graphiql">Loading GraphiQL...</div>
@@ -137,7 +137,7 @@ val generateGraphiQL by tasks.registering {
     ></script>
     <script
         crossorigin
-        src="https://unpkg.com/graphiql/graphiql.min.js"
+        src="https://unpkg.com/graphiql@2.4.7/graphiql.min.js"
     ></script>
 
     <script>
