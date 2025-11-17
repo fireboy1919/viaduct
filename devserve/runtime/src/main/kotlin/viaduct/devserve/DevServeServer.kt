@@ -43,7 +43,8 @@ class DevServeServer(
     /**
      * Starts the development server.
      *
-     * Discovers the ViaductFactory, creates a Viaduct instance, and starts the Ktor server.
+     * Attempts to obtain a Viaduct instance either from a DI context (if available)
+     * or by discovering and instantiating a ViaductFactory. Then starts the Ktor server.
      *
      * If port is set to 0, the server will bind to any available port.
      */
@@ -51,16 +52,25 @@ class DevServeServer(
         logger.info("Starting Viaduct Development Server...")
 
         try {
-            // Discover and instantiate the factory
-            logger.info("Discovering ViaductFactory...")
-            val factory = FactoryDiscovery.discoverFactory()
-            logger.info("Found factory: ${factory::class.qualifiedName}")
+            // Try to get Viaduct from DI context first (e.g., Micronaut, Spring)
+            logger.info("Attempting to start DI context and obtain Viaduct bean...")
+            val viaductInstance = DIContextStarter.tryStartAndGetViaduct()
 
-            // Create Viaduct instance
-            logger.info("Creating Viaduct instance...")
-            val viaductInstance = factory.createViaduct()
-            viaduct = viaductInstance
-            logger.info("Viaduct instance created successfully")
+            if (viaductInstance != null) {
+                logger.info("Viaduct instance obtained from DI context")
+                viaduct = viaductInstance
+            } else {
+                // Fall back to factory discovery approach
+                logger.info("No DI context available, falling back to factory discovery...")
+                logger.info("Discovering ViaductFactory...")
+                val factory = FactoryDiscovery.discoverFactory()
+                logger.info("Found factory: ${factory::class.qualifiedName}")
+
+                // Create Viaduct instance
+                logger.info("Creating Viaduct instance from factory...")
+                viaduct = factory.createViaduct()
+                logger.info("Viaduct instance created successfully from factory")
+            }
 
             // Capture references for use in server configuration
             val loggerRef = logger
@@ -70,7 +80,7 @@ class DevServeServer(
 
             // Start the server
             val server = embeddedServer(Netty, port = portRef, host = hostRef) {
-                configureApplication(viaductInstance, loggerRef, mapperRef)
+                configureApplication(viaduct, loggerRef, mapperRef)
             }
 
             // Start server without blocking initially

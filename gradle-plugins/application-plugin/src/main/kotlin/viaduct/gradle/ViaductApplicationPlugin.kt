@@ -149,33 +149,40 @@ class ViaductApplicationPlugin : Plugin<Project> {
     }
 
     private fun Project.setupDevServeTask(generateGRTsTask: TaskProvider<Jar>) {
+        // Create configuration at configuration time (not execution time) so dependency substitution works
+        val devserveConfig = configurations.create("devserveRuntime") {
+            isCanBeConsumed = false
+            isCanBeResolved = true
+            isVisible = false
+        }
+
+        // Add devserve-runtime dependency after evaluation
+        afterEvaluate {
+            // Always use Maven coordinates. When in Viaduct repository during development,
+            // publish to Maven Local first: ./gradlew :devserve:runtime:publishToMavenLocal
+            // External projects will resolve from Maven Central.
+            val version = ViaductPluginCommon.BOM.getDefaultVersion()
+            dependencies.add(devserveConfig.name, "com.airbnb.viaduct:devserve-runtime:$version")
+        }
+
         tasks.register("devserve") {
             group = "viaduct"
             description = "Start the Viaduct development server with GraphiQL IDE"
 
-            // Ensure GRTs are generated before starting
+            // Ensure GRTs are generated and classes are compiled before starting
             dependsOn(generateGRTsTask)
+            dependsOn("classes")
 
             doLast {
-                // Create configuration at execution time for devserve dependencies
-                val devserveConfig = configurations.create("devserveRuntime") {
-                    isCanBeConsumed = false
-                    isCanBeResolved = true
-                    isVisible = false
-                }
-
-                // Add devserve-runtime dependency
-                // Use Maven coordinates - dependency substitution in settings.gradle.kts
-                // will resolve this to the project dependency when in the Viaduct build
-                val version = ViaductPluginCommon.BOM.getDefaultVersion()
-                dependencies.add(devserveConfig.name, "com.airbnb.viaduct:devserve-runtime:$version")
-
-                // Get the runtime classpath
+                // Get the runtime classpath and main classes output
                 val runtimeClasspath = configurations.getByName("runtimeClasspath")
+                val mainOutput = project.extensions.getByType(org.gradle.api.tasks.SourceSetContainer::class.java)
+                    .getByName("main").output
 
                 javaexec {
                     mainClass.set("viaduct.devserve.DevServeServerKt")
-                    classpath = devserveConfig + runtimeClasspath
+                    // Include: devserve runtime, main classes output, and runtime dependencies
+                    classpath = devserveConfig + mainOutput + runtimeClasspath
                     standardInput = System.`in`
 
                     // Pass system properties for configuration
