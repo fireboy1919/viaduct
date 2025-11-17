@@ -15,6 +15,7 @@ pluginManagement {
 
 dependencyResolutionManagement {
     repositories {
+        mavenLocal()  // Temporary: for testing devserve
         mavenCentral()
         gradlePluginPortal()
     }

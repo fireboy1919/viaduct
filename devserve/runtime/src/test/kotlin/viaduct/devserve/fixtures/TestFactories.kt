@@ -1,16 +1,26 @@
 package viaduct.devserve.fixtures
 
+import viaduct.service.BasicViaductFactory
+import viaduct.service.TenantRegistrationInfo
 import viaduct.service.api.Viaduct
 import viaduct.service.api.ViaductApplication
 import viaduct.service.api.ViaductFactory
 
 /**
- * Test fixture: A valid factory with @ViaductApplication annotation
+ * Test fixture: A valid factory with @ViaductApplication annotation.
+ * Creates a minimal Viaduct instance for testing purposes.
+ * Uses BasicViaductFactory with the test fixtures package prefix.
  */
 @ViaductApplication
 class ValidTestFactory : ViaductFactory {
     override fun createViaduct(): Viaduct {
-        throw NotImplementedError("Test factory - should not be called")
+        // Create a minimal Viaduct using BasicViaductFactory
+        // This will discover any @Resolver annotated test resolvers
+        return BasicViaductFactory.create(
+            tenantRegistrationInfo = TenantRegistrationInfo(
+                tenantPackagePrefix = "viaduct.devserve.fixtures"
+            )
+        )
     }
 }
 
