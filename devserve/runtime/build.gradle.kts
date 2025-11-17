@@ -89,12 +89,12 @@ dependencies {
 }
 
 /**
- * Task to generate GraphiQL HTML file.
- * Creates a GraphiQL IDE page that loads the latest version from CDN.
+ * Task to generate GraphiQL HTML file with Global ID plugin.
+ * Creates GraphiQL 5 IDE with Explorer and Global ID utilities for Viaduct development.
  */
 val generateGraphiQL by tasks.registering {
     group = "build"
-    description = "Generate GraphiQL HTML for the development server"
+    description = "Generate GraphiQL HTML with plugins for the development server"
 
     val outputDir = layout.buildDirectory.dir("resources/main/graphiql")
     val outputFile = outputDir.map { it.file("index.html") }
@@ -103,75 +103,164 @@ val generateGraphiQL by tasks.registering {
     outputs.cacheIf { true }
 
     doLast {
-        logger.lifecycle("Generating GraphiQL HTML...")
+        logger.lifecycle("Generating GraphiQL HTML with plugins...")
 
         val graphiqlHtml = """
-<!DOCTYPE html>
+<!--
+ *  Copyright (c) 2025 Airbnb, Inc.
+ *  All rights reserved.
+ *
+ *  This source code is licensed under the Apache 2.0 license found in the
+ *  LICENSE file in the root directory of this source tree.
+-->
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GraphiQL - Viaduct DevServe</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        }
-        #graphiql {
-            height: 100vh;
-        }
+      body {
+        margin: 0;
+      }
+
+      #graphiql {
+        height: 100dvh;
+      }
+
+      .loading {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 4rem;
+      }
     </style>
-    <link rel="stylesheet" href="https://unpkg.com/graphiql@2.4.7/graphiql.min.css" />
-</head>
-<body>
-    <div id="graphiql">Loading GraphiQL...</div>
+    <link rel="stylesheet" href="https://esm.sh/graphiql/dist/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://esm.sh/@graphiql/plugin-explorer/dist/style.css"
+    />
+    <!-- Babel standalone for JSX transpilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!--
+     * Note:
+     * The ?standalone flag bundles the module along with all of its `dependencies`, excluding `peerDependencies`, into a single JavaScript file.
+     * `@emotion/is-prop-valid` is a shim to remove the console error ` module "@emotion /is-prop-valid" not found`. Upstream issue: https://github.com/motiondivision/motion/issues/3126
+    -->
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@19.1.0",
+          "react/": "https://esm.sh/react@19.1.0/",
 
-    <script
-        crossorigin
-        src="https://unpkg.com/react@18/umd/react.production.min.js"
-    ></script>
-    <script
-        crossorigin
-        src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"
-    ></script>
-    <script
-        crossorigin
-        src="https://unpkg.com/graphiql@2.4.7/graphiql.min.js"
-    ></script>
+          "react-dom": "https://esm.sh/react-dom@19.1.0",
+          "react-dom/": "https://esm.sh/react-dom@19.1.0/",
 
-    <script>
-        const root = ReactDOM.createRoot(document.getElementById('graphiql'));
+          "graphiql": "https://esm.sh/graphiql?standalone&external=react,react-dom,@graphiql/react,graphql",
+          "graphiql/": "https://esm.sh/graphiql/",
+          "@graphiql/plugin-explorer": "https://esm.sh/@graphiql/plugin-explorer?standalone&external=react,@graphiql/react,graphql",
+          "@graphiql/react": "https://esm.sh/@graphiql/react?standalone&external=react,react-dom,graphql,@graphiql/toolkit,@emotion/is-prop-valid",
 
-        // Create fetcher with proper error handling
-        const fetcher = GraphiQL.createFetcher({
-            url: '/graphql',
-        });
-
-        // Log when schema is loaded
-        const originalFetcher = fetcher;
-        const loggingFetcher = async (graphQLParams) => {
-            try {
-                const result = await originalFetcher(graphQLParams);
-                // Log introspection queries for debugging
-                if (graphQLParams.operationName === 'IntrospectionQuery') {
-                    console.log('Schema introspection successful');
-                }
-                return result;
-            } catch (error) {
-                console.error('GraphQL request failed:', error);
-                throw error;
-            }
-        };
-
-        root.render(
-            React.createElement(GraphiQL, {
-                fetcher: loggingFetcher,
-                defaultQuery: '# Welcome to Viaduct DevServe!\\n# \\n# Start typing your GraphQL query here.\\n# Press Ctrl+Space for autocomplete.\\n# Click the Docs button to explore the schema.\\n\\nquery {\\n  # Your query here\\n}\\n',
-            })
-        );
+          "@graphiql/toolkit": "https://esm.sh/@graphiql/toolkit?standalone&external=graphql",
+          "graphql": "https://esm.sh/graphql@16.11.0",
+          "@emotion/is-prop-valid": "data:text/javascript,"
+        }
+      }
     </script>
-</body>
+    <script type="module">
+      import React from 'react';
+      import ReactDOM from 'react-dom/client';
+      import { GraphiQL, HISTORY_PLUGIN } from 'graphiql';
+      import { createGraphiQLFetcher } from '@graphiql/toolkit';
+      import { explorerPlugin } from '@graphiql/plugin-explorer';
+      import { loadJSX } from '/js/jsx-loader.js';
+      import 'graphiql/setup-workers/esm.sh';
+
+      const baseFetcher = createGraphiQLFetcher({
+        url: '/graphql',
+      });
+
+      // Patch fetcher to fix introspection response for GraphiQL compatibility
+      // GraphiQL 5 requires all directives to have an 'args' field, even if empty
+      // but GraphQL Java omits it when directives have no arguments
+      const fetcher = async (graphQLParams, options) => {
+        const result = await baseFetcher(graphQLParams, options);
+
+        // Check if this is an introspection query response
+        if (result?.data?.__schema?.directives) {
+          result.data.__schema.directives = result.data.__schema.directives.map(directive => {
+            // Add empty args array if missing
+            if (!directive.hasOwnProperty('args')) {
+              return { ...directive, args: [] };
+            }
+            return directive;
+          });
+        }
+
+        return result;
+      };
+
+      // Load JSX plugin and initialize
+      async function initializeGraphiQL() {
+        try {
+          const pluginModule = await loadJSX('/js/global-id-plugin.jsx');
+          const createGlobalIdPlugin = pluginModule.createGlobalIdPlugin;
+
+          // Create plugins
+          const explorer = explorerPlugin();
+          const globalIdPlugin = createGlobalIdPlugin(React);
+          const plugins = [HISTORY_PLUGIN, explorer, globalIdPlugin];
+
+          // Initialize GraphiQL with plugins
+          renderGraphiQL(plugins);
+        } catch (error) {
+          console.error('Failed to load JSX plugin:', error);
+          // Fallback: render GraphiQL without the global ID plugin
+          const explorer = explorerPlugin();
+          const plugins = [HISTORY_PLUGIN, explorer];
+          renderGraphiQL(plugins);
+        }
+      }
+
+      function renderGraphiQL(plugins) {
+        const defaultQuery = `# Welcome to Viaduct DevServe!
+#
+# Start typing your GraphQL query here.
+# Press Ctrl+Space for autocomplete.
+# Click the Docs button to explore the schema.
+# Use the Global ID Utils plugin (key icon) to encode/decode Viaduct Global IDs.
+
+query {
+  # Your query here
+}
+`;
+
+        function App() {
+          const explorer = plugins.find(p => p.title === 'Explorer');
+          return React.createElement(GraphiQL, {
+            fetcher,
+            plugins,
+            visiblePlugin: explorer, // Open explorer by default
+            defaultQuery,
+            defaultEditorToolsVisibility: true,
+          });
+        }
+
+        const container = document.getElementById('graphiql');
+        const root = ReactDOM.createRoot(container);
+        root.render(React.createElement(App));
+      }
+
+      // Initialize the application
+      initializeGraphiQL();
+    </script>
+  </head>
+  <body>
+    <div id="graphiql">
+      <div class="loading">Loading…</div>
+    </div>
+  </body>
 </html>
         """.trimIndent()
 
