@@ -1,3 +1,5 @@
+import viaduct.devserve.GraphiQLHtmlCustomizer
+
 plugins {
     id("conventions.kotlin")
     `maven-publish`
@@ -90,133 +92,6 @@ dependencies {
 }
 
 /**
- * Downloads HTML from a URL.
- */
-fun downloadHtml(sourceUrl: String): String {
-    val tempFile = File.createTempFile("graphiql", ".html")
-    try {
-        ant.invokeMethod("get", mapOf("src" to sourceUrl, "dest" to tempFile))
-        return tempFile.readText()
-    } finally {
-        tempFile.delete()
-    }
-}
-
-/**
- * Applies Viaduct customizations to GraphiQL HTML.
- */
-fun customizeGraphiQLHtml(html: String): String {
-    var customized = html
-
-    // 1. Update title
-    customized = customized.replace(
-        Regex("<title>.*?</title>"),
-        "<title>GraphiQL - Viaduct DevServe</title>"
-    )
-
-    // 2. Update copyright
-    customized = customized.replace(
-        "Copyright (c) 2025 GraphQL Contributors",
-        "Copyright (c) 2025 Airbnb, Inc."
-    )
-
-    // 3. Change demo endpoint to /graphql
-    customized = customized.replace(
-        "url: 'https://countries.trevorblades.com'",
-        "url: '/graphql'"
-    )
-
-    // 4. Find the module script and inject our customizations
-    val moduleScriptPattern = Regex(
-        """(<script type="module">)(.*?)(</script>)""",
-        RegexOption.DOT_MATCHES_ALL
-    )
-
-    val moduleScriptMatch = moduleScriptPattern.find(customized)
-    if (moduleScriptMatch != null) {
-        val (opening, scriptContent, closing) = moduleScriptMatch.destructured
-
-        // Add our imports at the beginning of the module script
-        val viaductImports = """
-      import { loadJSX } from '/js/jsx-loader.js';
-      import { createPatchedFetcher } from '/js/introspection-patch.js';
-"""
-
-        // Wrap the fetcher creation with our patch
-        var modifiedScript = scriptContent.replace(
-            Regex("""const fetcher = createGraphiQLFetcher\(\{[\s\S]*?\}\);"""),
-            """const baseFetcher = createGraphiQLFetcher({
-        url: '/graphql',
-      });
-      const fetcher = createPatchedFetcher(baseFetcher);"""
-        )
-
-        // Modify the plugin initialization to load our Global ID plugin
-        modifiedScript = modifiedScript.replace(
-            "const plugins = [HISTORY_PLUGIN, explorerPlugin()];",
-            """// Load Viaduct plugins asynchronously
-      async function loadPlugins() {
-        try {
-          const pluginModule = await loadJSX('/js/global-id-plugin.jsx');
-          const createGlobalIdPlugin = pluginModule.createGlobalIdPlugin;
-          const globalIdPlugin = createGlobalIdPlugin(React);
-          return [HISTORY_PLUGIN, explorerPlugin(), globalIdPlugin];
-        } catch (error) {
-          console.error('Failed to load Viaduct Global ID plugin:', error);
-          return [HISTORY_PLUGIN, explorerPlugin()];
-        }
-      }"""
-        )
-
-        // Replace the App rendering to be async and use our plugins
-        modifiedScript = modifiedScript.replace(
-            Regex("""function App\(\)[\s\S]*?root\.render\(React\.createElement\(App\)\);"""),
-            """async function initGraphiQL() {
-        const plugins = await loadPlugins();
-        const explorer = plugins.find(p => p.title === 'Explorer');
-        const defaultQuery = `# Welcome to Viaduct DevServe!
-#
-# Start typing your GraphQL query here.
-# Press Ctrl+Space for autocomplete.
-# Click the Docs button to explore the schema.
-# Use the Global ID Utils plugin (key icon) to encode/decode Viaduct Global IDs.
-
-query {
-  # Your query here
-}
-`;
-
-        function App() {
-          return React.createElement(GraphiQL, {
-            fetcher,
-            plugins,
-            visiblePlugin: explorer,
-            defaultQuery,
-            defaultEditorToolsVisibility: true,
-          });
-        }
-
-        const container = document.getElementById('graphiql');
-        const root = ReactDOM.createRoot(container);
-        root.render(React.createElement(App));
-      }
-
-      initGraphiQL();"""
-        )
-
-        // Reconstruct the script with our imports
-        val newModuleScript = opening + viaductImports + modifiedScript + closing
-        customized = customized.replace(moduleScriptMatch.value, newModuleScript)
-    } else {
-        throw GradleException(
-            "Could not find module script in GraphiQL HTML. HTML structure may have changed."
-        )
-    }
-
-    return customized
-}
-
-/**
  * Downloads and customizes the official GraphiQL CDN example HTML.
  *
  * Downloads the base HTML from a specific GraphiQL release and applies Viaduct customizations
@@ -224,7 +99,7 @@ query {
  * This is more robust than text-based patches as it adapts to HTML structure changes.
  *
  * To upgrade GraphiQL:
- * 1. Update graphiqlGitTag below to the new release (e.g., "graphiql@3.1.0")
+ * 1. Update graphiqlGitTag below to the new release (e.g., "graphiql@5.3.0")
  * 2. Run: ./gradlew :devserve:downloadGraphiQLHtml
  * 3. Test the result
  */
@@ -245,16 +120,13 @@ val downloadGraphiQLHtml by tasks.registering {
         val sourceUrl = "https://raw.githubusercontent.com/graphql/graphiql/$graphiqlGitTag/examples/graphiql-cdn/index.html"
 
         logger.lifecycle("Downloading GraphiQL HTML from: $sourceUrl")
-        val html = downloadHtml(sourceUrl)
-
         logger.lifecycle("Applying Viaduct customizations...")
-        val customized = customizeGraphiQLHtml(html)
 
-        // Write the customized HTML
-        outputFile.get().asFile.apply {
-            parentFile.mkdirs()
-            writeText(customized)
-        }
+        val customizer = GraphiQLHtmlCustomizer(
+            sourceUrl = sourceUrl,
+            outputFile = outputFile.get().asFile
+        )
+        customizer.customize()
 
         logger.lifecycle("GraphiQL HTML customized and saved to: ${outputFile.get().asFile}")
         logger.lifecycle("Based on GraphiQL release: $graphiqlGitTag")
