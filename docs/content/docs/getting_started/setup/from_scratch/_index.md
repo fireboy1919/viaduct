@@ -108,6 +108,24 @@ or
 ./gradlew -q run --args="'{ author }'"
 ```
 
+### Using the Development Server
+
+For interactive development with GraphiQL IDE, you can use the development server:
+
+```shell
+./gradlew devserve
+```
+
+Then open `http://localhost:8080/graphiql` in your browser to explore your GraphQL API interactively.
+
+For hot-reloading during development:
+
+```shell
+./gradlew --continuous devserve
+```
+
+This will automatically reload the server when you make changes to your schema or code. Learn more in the [Development Server documentation](../../../developers/devserve/).
+
 ## What's Next
 
 Continue to [Touring the Application](../../tour) to understand the structure of a Viaduct application.

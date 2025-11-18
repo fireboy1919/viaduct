@@ -36,6 +36,24 @@ Follow the instructions in the repository's README to build and run the applicat
 ./gradlew run
 ```
 
+### Using the Development Server
+
+For interactive development with GraphiQL IDE, use the development server:
+
+```shell
+./gradlew devserve
+```
+
+Then open `http://localhost:8080/graphiql` in your browser to explore the StarWars GraphQL API.
+
+For hot-reloading during development (automatically reloads when you edit schema or code files):
+
+```shell
+./gradlew --continuous devserve
+```
+
+Learn more in the [Development Server documentation](../../developers/devserve/).
+
 After exploring the StarWars application, you'll have a solid understanding of how to build production-ready GraphQL
 applications with Viaduct.
 

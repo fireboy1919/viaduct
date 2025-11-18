@@ -19,6 +19,7 @@ import viaduct.gradle.ViaductPluginCommon.applyViaductBOM
 import viaduct.gradle.ViaductPluginCommon.configureIdeaIntegration
 import viaduct.gradle.task.AssembleCentralSchemaTask
 import viaduct.gradle.task.GenerateGRTClassFilesTask
+import java.io.File
 
 class ViaductApplicationPlugin : Plugin<Project> {
     override fun apply(project: Project): Unit =
@@ -164,29 +165,98 @@ class ViaductApplicationPlugin : Plugin<Project> {
             dependencies.add(devserveConfig.name, "com.airbnb.viaduct:devserve:$version")
         }
 
+        // Track the server process across task executions
+        var serverProcess: Process? = null
+
+        // Register JVM shutdown hook to clean up process
+        Runtime.getRuntime().addShutdownHook(Thread {
+            serverProcess?.let {
+                if (it.isAlive) {
+                    println("Stopping devserve server...")
+                    it.destroy()
+                    it.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)
+                    if (it.isAlive) {
+                        it.destroyForcibly()
+                    }
+                }
+            }
+        })
+
         tasks.register("devserve") {
             group = "viaduct"
-            description = "Start the Viaduct development server with GraphiQL IDE"
+            description = "Start the Viaduct development server with GraphiQL IDE (use with --continuous for hot-reloading)"
+
+            // Mark as not compatible with configuration cache since it needs project access at execution time
+            notCompatibleWithConfigurationCache("devserve task requires project access at execution time")
 
             // Ensure GRTs are generated and classes are compiled before starting
             dependsOn(generateGRTsTask)
             dependsOn("classes")
 
             doLast {
+                // Stop existing server if running
+                serverProcess?.let {
+                    if (it.isAlive) {
+                        logger.lifecycle("Stopping previous devserve instance...")
+                        it.destroy()
+                        it.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)
+                        if (it.isAlive) {
+                            it.destroyForcibly()
+                        }
+                        // Give it a moment to release the port
+                        Thread.sleep(1000)
+                    }
+                }
+
                 // Get the runtime classpath and main classes output
                 val runtimeClasspath = configurations.getByName("runtimeClasspath")
                 val mainOutput = project.extensions.getByType(org.gradle.api.tasks.SourceSetContainer::class.java)
                     .getByName("main").output
 
-                javaexec {
-                    mainClass.set("viaduct.devserve.DevServeServerKt")
-                    // Include: devserve runtime, main classes output, and runtime dependencies
-                    classpath = devserveConfig + mainOutput + runtimeClasspath
-                    standardInput = System.`in`
+                // Build classpath
+                val fullClasspath = (devserveConfig.files + mainOutput.files + runtimeClasspath.files)
+                    .joinToString(File.pathSeparator)
 
-                    // Pass system properties for configuration
-                    systemProperty("devserve.port", project.findProperty("devserve.port") ?: "8080")
-                    systemProperty("devserve.host", project.findProperty("devserve.host") ?: "0.0.0.0")
+                // Find java executable
+                val javaHome = System.getProperty("java.home")
+                val javaExecutable = File(javaHome, "bin/java").absolutePath
+
+                // Build command
+                val command = mutableListOf(
+                    javaExecutable,
+                    "-cp", fullClasspath,
+                    "-Ddevserve.port=${project.findProperty("devserve.port") ?: "8080"}",
+                    "-Ddevserve.host=${project.findProperty("devserve.host") ?: "0.0.0.0"}",
+                    "viaduct.devserve.DevServeServerKt"
+                )
+
+                logger.lifecycle("Starting devserve server...")
+                logger.lifecycle("To enable hot-reloading, run: gradle --continuous devserve")
+
+                // Start process
+                val processBuilder = ProcessBuilder(command)
+                    .redirectOutput(ProcessBuilder.Redirect.INHERIT)
+                    .redirectError(ProcessBuilder.Redirect.INHERIT)
+                    .directory(projectDir)
+
+                serverProcess = processBuilder.start()
+
+                // Give server time to start
+                Thread.sleep(2000)
+
+                if (!serverProcess!!.isAlive) {
+                    throw org.gradle.api.GradleException("DevServe server failed to start")
+                }
+
+                logger.lifecycle("DevServe server started. Press Ctrl+C to stop.")
+
+                // In continuous mode, return immediately so Gradle can watch for changes
+                // In normal mode, wait for the process
+                if (gradle.startParameter.isContinuous) {
+                    logger.lifecycle("Continuous mode active - watching for changes...")
+                } else {
+                    // Not in continuous mode - wait for process to exit
+                    serverProcess!!.waitFor()
                 }
             }
         }
