@@ -13,11 +13,7 @@ plugins {
 
 rootProject.name = "viaduct"
 
-includeBuild(".") {
-    dependencySubstitution {
-        substitute(module("com.airbnb.viaduct:devserve-runtime")).using(project(":devserve:runtime"))
-    }
-}
+includeBuild(".")
 includeBuild("included-builds/core")
 includeBuild("gradle-plugins") {
     dependencySubstitution {
@@ -27,7 +23,7 @@ includeBuild("gradle-plugins") {
     }
 }
 
-// demo apps
+// demo apps - devserve-runtime automatically substituted by root build
 includeBuild("demoapps/cli-starter")
 includeBuild("demoapps/jetty-starter")
 includeBuild("demoapps/ktor-starter")
@@ -40,7 +36,7 @@ include(":tenant:runtime-integration-tests")
 include(":tenant:tutorials")
 
 // devserve
-include(":devserve:runtime")
+include(":devserve")
 
 // misc
 include(":docs")

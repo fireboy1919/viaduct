@@ -235,9 +235,13 @@ class DevServeServer(
                 }
             }
 
-            // Root redirect to GraphiQL
+            // Root redirects to GraphiQL
             get("/") {
-                call.respondText(graphiQLHtml(), ContentType.Text.Html)
+                call.respondText(
+                    """<html><head><meta http-equiv="refresh" content="0; url=/graphiql"></head></html>""",
+                    ContentType.Text.Html,
+                    HttpStatusCode.OK
+                )
             }
         }
     }

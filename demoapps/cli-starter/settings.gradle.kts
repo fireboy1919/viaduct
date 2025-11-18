@@ -28,11 +28,6 @@ dependencyResolutionManagement {
     }
 }
 
-// When part of composite build, substitute devserve-runtime with project dependency
-if (gradle.parent != null) {
-    includeBuild("../..") {
-        dependencySubstitution {
-            substitute(module("com.airbnb.viaduct:devserve-runtime")).using(project(":devserve:runtime"))
-        }
-    }
-}
+// Note: When part of composite build (gradle.parent != null), the root build's
+// dependencySubstitution automatically handles devserve-runtime resolution.
+// When standalone, resolves from Maven Central.
