@@ -156,13 +156,12 @@ class ViaductApplicationPlugin : Plugin<Project> {
             isVisible = false
         }
 
-        // Add devserve-runtime dependency after evaluation
+        // Add devserve dependency after evaluation
         afterEvaluate {
-            // Always use Maven coordinates. When in Viaduct repository during development,
-            // publish to Maven Local first: ./gradlew :devserve:runtime:publishToMavenLocal
-            // External projects will resolve from Maven Central.
+            // Gradle automatically substitutes with local :devserve project in composite builds.
+            // External standalone projects will resolve from Maven Central.
             val version = ViaductPluginCommon.BOM.getDefaultVersion()
-            dependencies.add(devserveConfig.name, "com.airbnb.viaduct:devserve-runtime:$version")
+            dependencies.add(devserveConfig.name, "com.airbnb.viaduct:devserve:$version")
         }
 
         tasks.register("devserve") {
