@@ -1,6 +1,5 @@
 package viaduct.api.internal
 
-import com.google.common.annotations.VisibleForTesting
 import graphql.GraphQLContext
 import graphql.schema.GraphQLCompositeType
 import graphql.schema.GraphQLEnumType
@@ -16,6 +15,9 @@ import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass
 import kotlin.reflect.full.isSubclassOf
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import viaduct.api.DynamicOutputValueBuilder
 import viaduct.api.ViaductFrameworkException
 import viaduct.api.ViaductTenantException
@@ -50,6 +52,7 @@ abstract class ObjectBase(
         try {
             return get(fieldName, baseFieldTypeClass, alias)
         } catch (ex: Exception) {
+            if (ex is CancellationException) currentCoroutineContext().ensureActive()
             when (ex) {
                 is ViaductTenantException -> throw ex
                 is EngineObjectDataFetchException -> throw ex.cause!!
@@ -96,6 +99,7 @@ abstract class ObjectBase(
                     else -> throw ViaductFrameworkException("Unknown EngineObject subclass ${engineObject.javaClass.name}")
                 }
             } catch (ex: Exception) {
+                if (ex is CancellationException) currentCoroutineContext().ensureActive()
                 when (ex) {
                     is UnsetSelectionException -> throw ViaductTenantUsageException(ex.message, ex)
                     is ViaductTenantException, is ViaductFrameworkException -> throw ex
@@ -266,7 +270,7 @@ abstract class ObjectBase(
          * Dynamic builder function with type check and alias support.
          * Only used for unit tests, where we need to associate data with an alias.
          */
-        @VisibleForTesting
+        // Internal for testing
         internal fun put(
             name: String,
             value: Any?,

@@ -266,6 +266,7 @@ interface ResolverTestBase {
         }
 
         val rl = context.internal.reflectionLoader
+
         @Suppress("UNCHECKED_CAST")
         val rootQueryType = rl.reflectionFor(getSchema().schema.queryType.name) as Type<Query>
         val resultMap = mutableMapOf<String, Query>()
@@ -354,6 +355,23 @@ interface ResolverTestBase {
         SelectionSetFactoryImpl(
             RawSelectionSetFactoryImpl(getSchema())
         )
+
+    /**
+     * Helper function to add a field with an alias to an ObjectBase.Builder.
+     * This is useful for testing resolvers that return fields with aliases.
+     */
+    fun <R, T : ObjectBase.Builder<R>> T.put(
+        name: String,
+        value: Any?,
+        alias: String
+    ): T {
+        return ObjectBaseTestHelpers.putWithAlias(
+            builder = this,
+            name = name,
+            value = value,
+            alias = alias
+        )
+    }
 }
 
 // Internal helper functions and values
@@ -509,19 +527,6 @@ class QueryForSelection(
     val selections: String,
     val query: Query
 ) : Query by query
-
-fun <R, T : ObjectBase.Builder<R>> T.put(
-    name: String,
-    value: Any?,
-    alias: String
-): T {
-    return ObjectBaseTestHelpers.putWithAlias(
-        builder = this,
-        name = name,
-        value = value,
-        alias = alias
-    )
-}
 
 @Suppress("USELESS_CAST")
 private fun <T : CompositeOutput> prebakedResultsOf(results: Map<String, T>) =

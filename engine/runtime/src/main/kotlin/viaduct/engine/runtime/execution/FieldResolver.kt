@@ -1,7 +1,6 @@
 package viaduct.engine.runtime.execution
 
 import graphql.TrivialDataFetcher
-import graphql.execution.CoercedVariables
 import graphql.execution.DataFetcherResult
 import graphql.execution.FetchedValue
 import graphql.execution.ResolveType
@@ -22,6 +21,9 @@ import graphql.schema.LightDataFetcher
 import graphql.util.FpKit
 import java.util.concurrent.CompletionStage
 import java.util.function.Supplier
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import viaduct.deferred.asDeferred
 import viaduct.engine.api.CheckerResult
 import viaduct.engine.api.LazyEngineObjectData
@@ -36,12 +38,12 @@ import viaduct.engine.runtime.ObjectEngineResultImpl.Companion.RAW_VALUE_SLOT
 import viaduct.engine.runtime.ObjectEngineResultImpl.Companion.setCheckerValue
 import viaduct.engine.runtime.ObjectEngineResultImpl.Companion.setRawValue
 import viaduct.engine.runtime.Value
+import viaduct.engine.runtime.context.findLocalContextForType
+import viaduct.engine.runtime.exceptions.FieldFetchingException
 import viaduct.engine.runtime.execution.FieldExecutionHelpers.buildDataFetchingEnvironment
 import viaduct.engine.runtime.execution.FieldExecutionHelpers.buildOERKeyForField
 import viaduct.engine.runtime.execution.FieldExecutionHelpers.collectFields
 import viaduct.engine.runtime.execution.FieldExecutionHelpers.executionStepInfoFactory
-import viaduct.engine.runtime.execution.FieldExecutionHelpers.resolveVariables
-import viaduct.engine.runtime.findLocalContextForType
 import viaduct.logging.ifDebug
 import viaduct.utils.slf4j.logger
 
@@ -213,14 +215,16 @@ class FieldResolver(
             parameters.executionContext.findLocalContextForType<EngineExecutionContextImpl>()
 
         parameters.launchOnRootScope {
-            val variables = resolveVariables(
-                plan.variablesResolvers,
+            val variables = FieldExecutionHelpers.resolveQueryPlanVariables(
+                plan,
                 parameters.executionStepInfo.arguments,
                 parameters.parentEngineResult,
                 parameters.queryEngineResult,
-                engineExecCtx
+                engineExecCtx,
+                parameters.executionContext.graphQLContext,
+                parameters.executionContext.locale
             )
-            val planParameters = parameters.forChildPlan(plan, CoercedVariables(variables))
+            val planParameters = parameters.forChildPlan(plan, variables)
             fetchObject(plan.parentType as GraphQLObjectType, planParameters)
         }
     }
@@ -459,6 +463,7 @@ class FieldResolver(
                         originalSource.resolveData(selections, localExecutionContext)
                         engineResult.resolve()
                     } catch (e: Exception) {
+                        if (e is CancellationException) currentCoroutineContext().ensureActive()
                         engineResult.resolveExceptionally(e)
                     }
                 }
