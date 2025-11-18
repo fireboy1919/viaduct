@@ -2,8 +2,6 @@ rootProject.name = "viaduct-jetty-starter"
 
 val viaductVersion: String by settings
 
-// When part of composite build, use local gradle-plugins
-// When standalone, use Maven Central (only after version is published)
 pluginManagement {
     if (gradle.parent != null) {
         includeBuild("../../gradle-plugins")
@@ -22,14 +20,9 @@ dependencyResolutionManagement {
     }
     versionCatalogs {
         create("libs") {
-            // This injects a dynamic value that your TOML can reference.
             version("viaduct", viaductVersion)
         }
     }
 }
-
-// Note: When part of composite build (gradle.parent != null), the root build's
-// dependencySubstitution automatically handles devserve-runtime resolution.
-// When standalone, resolves from Maven Central.
 
 include(":resolvers")
