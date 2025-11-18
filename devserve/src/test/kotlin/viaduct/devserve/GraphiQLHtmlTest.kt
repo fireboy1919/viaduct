@@ -41,8 +41,8 @@ class GraphiQLHtmlTest {
             val html = graphiQLHtml()
 
             // Verify essential GraphiQL elements are present
-            assertTrue(html.contains("<!DOCTYPE html>"), "Should be valid HTML")
-            assertTrue(html.contains("graphiql"), "Should reference GraphiQL (case insensitive)")
+            assertTrue(html.contains("<!doctype html>", ignoreCase = true), "Should be valid HTML")
+            assertTrue(html.contains("graphiql", ignoreCase = true), "Should reference GraphiQL")
 
         } catch (e: IllegalStateException) {
             // Skip test if resource doesn't exist

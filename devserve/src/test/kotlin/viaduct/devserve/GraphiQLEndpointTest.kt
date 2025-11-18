@@ -112,8 +112,8 @@ class GraphiQLEndpointTest {
         assertEquals(200, response.statusCode(), "GraphiQL endpoint should return 200 OK")
 
         val html = response.body()
-        assertTrue(html.contains("<!DOCTYPE html>"), "Should return valid HTML")
-        assertTrue(html.contains("GraphiQL") || html.contains("graphiql"), "Should reference GraphiQL")
+        assertTrue(html.contains("<!doctype html>", ignoreCase = true), "Should return valid HTML")
+        assertTrue(html.contains("GraphiQL", ignoreCase = true), "Should reference GraphiQL")
         assertTrue(html.contains("/graphql"), "Should reference the GraphQL endpoint")
     }
 
