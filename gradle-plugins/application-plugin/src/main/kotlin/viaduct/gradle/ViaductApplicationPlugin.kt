@@ -165,26 +165,23 @@ class ViaductApplicationPlugin : Plugin<Project> {
             dependencies.add(devserveConfig.name, "com.airbnb.viaduct:devserve:$version")
         }
 
-        // Track the server process across task executions
-        var serverProcess: Process? = null
+        // Track the server thread across task executions
+        var serverThread: Thread? = null
 
-        // Register JVM shutdown hook to clean up process
+        // Register JVM shutdown hook to clean up thread
         Runtime.getRuntime().addShutdownHook(Thread {
-            serverProcess?.let {
+            serverThread?.let {
                 if (it.isAlive) {
                     println("Stopping devserve server...")
-                    it.destroy()
-                    it.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)
-                    if (it.isAlive) {
-                        it.destroyForcibly()
-                    }
+                    it.interrupt()
+                    it.join(5000)
                 }
             }
         })
 
         tasks.register("devserve") {
             group = "viaduct"
-            description = "Start the Viaduct development server with GraphiQL IDE (use with --continuous for hot-reloading)"
+            description = "Start the Viaduct development server with GraphiQL IDE (use with --continuous for auto-reloading)"
 
             // Mark as not compatible with configuration cache since it needs project access at execution time
             notCompatibleWithConfigurationCache("devserve task requires project access at execution time")
@@ -195,14 +192,11 @@ class ViaductApplicationPlugin : Plugin<Project> {
 
             doLast {
                 // Stop existing server if running
-                serverProcess?.let {
+                serverThread?.let {
                     if (it.isAlive) {
                         logger.lifecycle("Stopping previous devserve instance...")
-                        it.destroy()
-                        it.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)
-                        if (it.isAlive) {
-                            it.destroyForcibly()
-                        }
+                        it.interrupt()
+                        it.join(5000)
                         // Give it a moment to release the port
                         Thread.sleep(1000)
                     }
@@ -213,50 +207,46 @@ class ViaductApplicationPlugin : Plugin<Project> {
                 val mainOutput = project.extensions.getByType(org.gradle.api.tasks.SourceSetContainer::class.java)
                     .getByName("main").output
 
-                // Build classpath
-                val fullClasspath = (devserveConfig.files + mainOutput.files + runtimeClasspath.files)
-                    .joinToString(File.pathSeparator)
-
-                // Find java executable
-                val javaHome = System.getProperty("java.home")
-                val javaExecutable = File(javaHome, "bin/java").absolutePath
-
-                // Build command
-                val command = mutableListOf(
-                    javaExecutable,
-                    "-cp", fullClasspath,
-                    "-Ddevserve.port=${project.findProperty("devserve.port") ?: "8080"}",
-                    "-Ddevserve.host=${project.findProperty("devserve.host") ?: "0.0.0.0"}",
-                    "viaduct.devserve.DevServeServerKt"
-                )
+                // Build full classpath
+                val fullClasspath = devserveConfig.files + mainOutput.files + runtimeClasspath.files
 
                 logger.lifecycle("Starting devserve server...")
-                logger.lifecycle("To enable hot-reloading, run: gradle --continuous devserve")
+                logger.lifecycle("To enable auto-reloading, run: gradle --continuous devserve")
 
-                // Start process
-                val processBuilder = ProcessBuilder(command)
-                    .redirectOutput(ProcessBuilder.Redirect.INHERIT)
-                    .redirectError(ProcessBuilder.Redirect.INHERIT)
-                    .directory(projectDir)
-
-                serverProcess = processBuilder.start()
-
-                // Give server time to start
-                Thread.sleep(2000)
-
-                if (!serverProcess!!.isAlive) {
-                    throw org.gradle.api.GradleException("DevServe server failed to start")
-                }
-
-                logger.lifecycle("DevServe server started. Press Ctrl+C to stop.")
-
-                // In continuous mode, return immediately so Gradle can watch for changes
-                // In normal mode, wait for the process
+                // In continuous mode, run javaExec in a background thread so we can return control to Gradle
+                // In normal mode, run javaExec directly (it will block until the server exits)
                 if (gradle.startParameter.isContinuous) {
-                    logger.lifecycle("Continuous mode active - watching for changes...")
+                    serverThread = Thread {
+                        try {
+                            project.javaexec {
+                                classpath = files(fullClasspath)
+                                mainClass.set("viaduct.devserve.DevServeServerKt")
+                                systemProperty("devserve.port", project.findProperty("devserve.port") ?: "8080")
+                                systemProperty("devserve.host", project.findProperty("devserve.host") ?: "0.0.0.0")
+                            }
+                        } catch (e: InterruptedException) {
+                            logger.lifecycle("DevServe server interrupted")
+                        }
+                    }
+                    serverThread!!.start()
+
+                    // Give server time to start
+                    Thread.sleep(2000)
+
+                    if (!serverThread!!.isAlive) {
+                        throw org.gradle.api.GradleException("DevServe server failed to start")
+                    }
+
+                    logger.lifecycle("DevServe server started. Continuous mode active - watching for changes...")
                 } else {
-                    // Not in continuous mode - wait for process to exit
-                    serverProcess!!.waitFor()
+                    // Not in continuous mode - run javaExec directly and wait for completion
+                    logger.lifecycle("DevServe server started. Press Ctrl+C to stop.")
+                    project.javaexec {
+                        classpath = files(fullClasspath)
+                        mainClass.set("viaduct.devserve.DevServeServerKt")
+                        systemProperty("devserve.port", project.findProperty("devserve.port") ?: "8080")
+                        systemProperty("devserve.host", project.findProperty("devserve.host") ?: "0.0.0.0")
+                    }
                 }
             }
         }

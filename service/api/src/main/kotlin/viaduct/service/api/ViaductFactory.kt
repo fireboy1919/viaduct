@@ -50,7 +50,7 @@ interface ViaductFactory {
      *
      * This method is called:
      * - Once on startup in development mode (`devserve`)
-     * - On every hot-reload when files change (in development mode)
+     * - On every auto-reload when files change (in development mode)
      * - Whenever the factory is invoked in production deployments
      *
      * @return A fully configured Viaduct instance ready to execute GraphQL operations

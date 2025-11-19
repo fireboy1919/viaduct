@@ -118,7 +118,7 @@ For interactive development with GraphiQL IDE, you can use the development serve
 
 Then open `http://localhost:8080/graphiql` in your browser to explore your GraphQL API interactively.
 
-For hot-reloading during development:
+For auto-reloading during development:
 
 ```shell
 ./gradlew --continuous devserve
