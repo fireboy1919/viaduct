@@ -139,8 +139,6 @@ tasks.named("processResources") {
 }
 
 // Clean up downloaded GraphiQL
-tasks.named("clean") {
-    doLast {
-        delete(layout.buildDirectory.dir("resources/main/graphiql"))
-    }
+tasks.named<Delete>("clean") {
+    delete(layout.buildDirectory.dir("resources/main/graphiql"))
 }

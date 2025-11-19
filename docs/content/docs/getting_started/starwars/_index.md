@@ -46,7 +46,7 @@ For interactive development with GraphiQL IDE, use the development server:
 
 Then open `http://localhost:8080/graphiql` in your browser to explore the StarWars GraphQL API.
 
-For hot-reloading during development (automatically reloads when you edit schema or code files):
+For auto-reloading during development (automatically reloads when you edit schema or code files):
 
 ```shell
 ./gradlew --continuous devserve

@@ -1,6 +1,6 @@
 ---
 title: Development Server (devserve)
-description: Run your Viaduct application with GraphiQL IDE and hot-reloading
+description: Run your Viaduct application with GraphiQL IDE and auto-reloading
 weight: 100
 ---
 
@@ -8,7 +8,7 @@ weight: 100
 
 The `devserve` task provides a development server for Viaduct applications with:
 - **GraphiQL IDE**: Interactive GraphQL explorer in your browser
-- **Hot-reloading**: Automatic reloading when schema or code changes
+- **Auto-reloading**: Automatic reloading when schema or code changes
 - **Zero configuration**: Works out-of-the-box with any Viaduct application
 
 ## Prerequisites
@@ -53,7 +53,7 @@ devserve.port=3000
 devserve.host=127.0.0.1
 ```
 
-## Hot-Reloading with Continuous Mode
+## Auto-Reloading with Continuous Mode
 
 For development workflows with automatic reloading when files change, use Gradle's continuous mode:
 
@@ -80,7 +80,7 @@ Continuous mode watches:
 
 ### Development Workflow
 
-A typical development workflow with hot-reloading:
+A typical development workflow with auto-reloading:
 
 1. Start the server in continuous mode:
    ```shell
