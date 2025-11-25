@@ -21,6 +21,13 @@ publishing {
             // Gradle automatically substitutes this with the local project in composite mode
             from(components["java"])
 
+            // Resolve actual versions for dependencies that use "INCLUDED" placeholder
+            // This ensures the POM contains real version numbers when published
+            versionMapping {
+                usage("java-api") { fromResolutionOf("runtimeClasspath") }
+                usage("java-runtime") { fromResolutionResult() }
+            }
+
             artifact(tasks["sourcesJar"])
             artifact(emptyJavadocJar.get())
 

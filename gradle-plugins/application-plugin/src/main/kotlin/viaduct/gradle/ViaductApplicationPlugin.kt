@@ -12,6 +12,7 @@ import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.TaskProvider
 import org.gradle.api.tasks.bundling.Jar
 import org.gradle.kotlin.dsl.register
+import org.gradle.process.ExecOperations
 import viaduct.gradle.ViaductPluginCommon.addViaductDependencies
 import viaduct.gradle.ViaductPluginCommon.addViaductTestDependencies
 import viaduct.gradle.ViaductPluginCommon.addViaductTestFixtures
@@ -20,8 +21,11 @@ import viaduct.gradle.ViaductPluginCommon.configureIdeaIntegration
 import viaduct.gradle.task.AssembleCentralSchemaTask
 import viaduct.gradle.task.GenerateGRTClassFilesTask
 import java.io.File
+import javax.inject.Inject
 
-class ViaductApplicationPlugin : Plugin<Project> {
+abstract class ViaductApplicationPlugin @Inject constructor(
+    private val execOperations: ExecOperations
+) : Plugin<Project> {
     override fun apply(project: Project): Unit =
         with(project) {
             require(this == rootProject) {
@@ -218,7 +222,7 @@ class ViaductApplicationPlugin : Plugin<Project> {
                 if (gradle.startParameter.isContinuous) {
                     serverThread = Thread {
                         try {
-                            project.javaexec {
+                            execOperations.javaexec {
                                 classpath = files(fullClasspath)
                                 mainClass.set("viaduct.devserve.DevServeServerKt")
                                 systemProperty("devserve.port", project.findProperty("devserve.port") ?: "8080")
@@ -241,7 +245,7 @@ class ViaductApplicationPlugin : Plugin<Project> {
                 } else {
                     // Not in continuous mode - run javaExec directly and wait for completion
                     logger.lifecycle("DevServe server started. Press Ctrl+C to stop.")
-                    project.javaexec {
+                    execOperations.javaexec {
                         classpath = files(fullClasspath)
                         mainClass.set("viaduct.devserve.DevServeServerKt")
                         systemProperty("devserve.port", project.findProperty("devserve.port") ?: "8080")
