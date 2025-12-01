@@ -4,7 +4,9 @@ import graphql.execution.instrumentation.Instrumentation
 import graphql.language.FragmentDefinition
 import graphql.schema.DataFetchingEnvironment
 import graphql.schema.GraphQLObjectType
+import graphql.util.FpKit
 import java.util.concurrent.ConcurrentHashMap
+import java.util.function.Supplier
 import viaduct.engine.api.Engine
 import viaduct.engine.api.EngineExecutionContext
 import viaduct.engine.api.FieldResolverExecutor
@@ -12,6 +14,7 @@ import viaduct.engine.api.FragmentLoader
 import viaduct.engine.api.NodeResolverExecutor
 import viaduct.engine.api.RawSelectionSet
 import viaduct.engine.api.RawSelectionsLoader
+import viaduct.engine.api.ResolutionPolicy
 import viaduct.engine.api.ViaductSchema
 import viaduct.engine.runtime.select.RawSelectionSetFactoryImpl
 import viaduct.service.api.spi.FlagManager
@@ -76,8 +79,10 @@ class EngineExecutionContextImpl(
     override val engine: Engine,
     val dataFetchingEnvironment: DataFetchingEnvironment? = null,
     override val activeSchema: ViaductSchema = fullSchema,
-    override val fieldScope: EngineExecutionContext.FieldExecutionScope = FieldExecutionScopeImpl(),
+    private val fieldScopeSupplier: Supplier<out EngineExecutionContext.FieldExecutionScope> = FpKit.intraThreadMemoize { FieldExecutionScopeImpl() }
 ) : EngineExecutionContext {
+    override val fieldScope: EngineExecutionContext.FieldExecutionScope by lazy { fieldScopeSupplier.get() }
+
     /**
      * Implementation of [EngineExecutionContext.FieldExecutionScope] that holds field-scoped
      * execution state.
@@ -87,6 +92,7 @@ class EngineExecutionContextImpl(
     data class FieldExecutionScopeImpl(
         override val fragments: Map<String, FragmentDefinition> = emptyMap(),
         override val variables: Map<String, Any?> = emptyMap(),
+        override val resolutionPolicy: ResolutionPolicy = ResolutionPolicy.STANDARD,
     ) : EngineExecutionContext.FieldExecutionScope
 
     override fun createNodeReference(
@@ -135,7 +141,7 @@ class EngineExecutionContextImpl(
         dataFetchingEnvironment: DataFetchingEnvironment? = this.dataFetchingEnvironment,
         executeAccessCheckInModstrat: Boolean = this.executeAccessChecksInModstrat,
         activeSchema: ViaductSchema = this.activeSchema,
-        fieldScope: EngineExecutionContext.FieldExecutionScope = this.fieldScope,
+        fieldScopeSupplier: Supplier<out EngineExecutionContext.FieldExecutionScope> = this.fieldScopeSupplier,
     ) = EngineExecutionContextImpl(
         fullSchema = this.fullSchema,
         scopedSchema = this.scopedSchema,
@@ -150,6 +156,6 @@ class EngineExecutionContextImpl(
         executeAccessChecksInModstrat = executeAccessCheckInModstrat,
         engine = this.engine,
         dataFetchingEnvironment = dataFetchingEnvironment,
-        fieldScope = fieldScope,
+        fieldScopeSupplier = fieldScopeSupplier,
     )
 }
