@@ -2,12 +2,10 @@ package viaduct.devserve
 
 import io.github.classgraph.ClassGraph
 import org.slf4j.LoggerFactory
-import viaduct.service.api.ViaductConfiguration
-import viaduct.service.api.ViaductFactory
 import kotlin.reflect.full.createInstance
 
 /**
- * Discovers ViaductFactory implementations annotated with @ViaductConfiguration
+ * Discovers ViaductDevServeProvider implementations annotated with @ViaductDevServeConfiguration
  * using classpath scanning.
  */
 object FactoryDiscovery {
@@ -15,35 +13,35 @@ object FactoryDiscovery {
     private val logger = LoggerFactory.getLogger(FactoryDiscovery::class.java)
 
     /**
-     * Scans the classpath to find a class annotated with @ViaductConfiguration
-     * that implements ViaductFactory.
+     * Scans the classpath to find a class annotated with @ViaductDevServeConfiguration
+     * that implements ViaductDevServeProvider.
      *
-     * @return An instance of the discovered factory
-     * @throws IllegalStateException if no factory is found or multiple factories are found
+     * @return An instance of the discovered provider
+     * @throws IllegalStateException if no provider is found or multiple providers are found
      */
-    fun discoverFactory(): ViaductFactory {
-        val factories = findFactoryClasses()
+    fun discoverProvider(): ViaductDevServeProvider {
+        val providers = findProviderClasses()
 
-        return when (factories.size) {
+        return when (providers.size) {
             0 -> throw IllegalStateException(
-                "No class found with @ViaductConfiguration annotation. " +
-                "Please create a class that implements ViaductFactory and annotate it with @ViaductConfiguration."
+                "No class found with @ViaductDevServeConfiguration annotation. " +
+                "Please create a class that implements ViaductDevServeProvider and annotate it with @ViaductDevServeConfiguration."
             )
-            1 -> factories.first()
+            1 -> providers.first()
             else -> throw IllegalStateException(
-                "Multiple classes found with @ViaductConfiguration annotation: ${factories.map { it::class.qualifiedName }}. " +
-                "Only one factory should be annotated with @ViaductConfiguration per application."
+                "Multiple classes found with @ViaductDevServeConfiguration annotation: ${providers.map { it::class.qualifiedName }}. " +
+                "Only one provider should be annotated with @ViaductDevServeConfiguration per application."
             )
         }
     }
 
     /**
-     * Finds all classes annotated with @ViaductConfiguration that implement ViaductFactory.
+     * Finds all classes annotated with @ViaductDevServeConfiguration that implement ViaductDevServeProvider.
      *
-     * @return List of instantiated factory instances
+     * @return List of instantiated provider instances
      */
-    private fun findFactoryClasses(): List<ViaductFactory> {
-        val annotationName = ViaductConfiguration::class.java.name
+    private fun findProviderClasses(): List<ViaductDevServeProvider> {
+        val annotationName = ViaductDevServeConfiguration::class.java.name
 
         return ClassGraph()
             .enableAnnotationInfo()
@@ -56,11 +54,11 @@ object FactoryDiscovery {
                         try {
                             val loadedClass = classInfo.loadClass()
 
-                            // Verify it implements ViaductFactory
-                            if (!ViaductFactory::class.java.isAssignableFrom(loadedClass)) {
+                            // Verify it implements ViaductDevServeProvider
+                            if (!ViaductDevServeProvider::class.java.isAssignableFrom(loadedClass)) {
                                 logger.warn(
-                                    "Skipping ${classInfo.name}: annotated with @ViaductConfiguration " +
-                                    "but does not implement ViaductFactory"
+                                    "Skipping ${classInfo.name}: annotated with @ViaductDevServeConfiguration " +
+                                    "but does not implement ViaductDevServeProvider"
                                 )
                                 return@mapNotNull null
                             }
@@ -71,7 +69,7 @@ object FactoryDiscovery {
                             } catch (e: NoSuchMethodException) {
                                 logger.warn(
                                     "Skipping ${classInfo.name}: no no-argument constructor found. " +
-                                    "ViaductFactory implementations must have a no-argument constructor."
+                                    "ViaductDevServeProvider implementations must have a no-argument constructor."
                                 )
                                 return@mapNotNull null
                             }
@@ -79,9 +77,9 @@ object FactoryDiscovery {
                             // Create instance
                             val kClass = loadedClass.kotlin
                             @Suppress("UNCHECKED_CAST")
-                            kClass.createInstance() as ViaductFactory
+                            kClass.createInstance() as ViaductDevServeProvider
                         } catch (e: Exception) {
-                            logger.error("Failed to instantiate factory class ${classInfo.name}", e)
+                            logger.error("Failed to instantiate provider class ${classInfo.name}", e)
                             null
                         }
                     }
