@@ -4,51 +4,21 @@ import viaduct.service.BasicViaductFactory
 import viaduct.service.SchemaRegistrationInfo
 import viaduct.service.TenantRegistrationInfo
 import viaduct.service.api.Viaduct
-import viaduct.service.api.ViaductConfiguration
-import viaduct.service.api.ViaductFactory
 import viaduct.service.api.spi.TenantCodeInjector
 import viaduct.service.toSchemaScopeInfo
 
 /**
- * ViaductFactory for the StarWars demo application.
+ * Factory for creating Viaduct instances for the StarWars demo application.
  *
- * This factory creates the Viaduct instance with the appropriate configuration
- * and tenant code injector. It supports two modes:
+ * Used by ViaductConfiguration to create the Viaduct bean for production use.
+ * For devserve, use StarWarsDevServeProvider instead.
  *
- * 1. Production mode (via ViaductConfiguration): Micronaut provides the injector
- * 2. DevServe mode (no-arg constructor): Starts Micronaut and gets the injector
+ * @param tenantCodeInjector The dependency injection provider for tenant code.
  */
-@ViaductConfiguration
-class StarWarsViaductFactory : ViaductFactory {
+class StarWarsViaductFactory(
     private val tenantCodeInjector: TenantCodeInjector
-
-    /**
-     * No-arg constructor for devserve mode.
-     * Starts Micronaut ApplicationContext and obtains the TenantCodeInjector from it.
-     */
-    constructor() {
-        // Start Micronaut ApplicationContext
-        val contextClass = Class.forName("io.micronaut.context.ApplicationContext")
-        val runMethod = contextClass.getMethod("run")
-        val context = runMethod.invoke(null) // ApplicationContext.run() is static
-
-        // Get the MicronautTenantCodeInjector bean from the context
-        val getBeanMethod = contextClass.getMethod("getBean", Class::class.java)
-        val injectorClass = Class.forName("com.example.starwars.service.viaduct.MicronautTenantCodeInjector")
-        tenantCodeInjector = getBeanMethod.invoke(context, injectorClass) as TenantCodeInjector
-    }
-
-    /**
-     * Constructor for production mode.
-     * Used by ViaductConfiguration with Micronaut DI providing the injector.
-     *
-     * @param tenantCodeInjector The dependency injection provider for tenant code.
-     */
-    constructor(tenantCodeInjector: TenantCodeInjector) {
-        this.tenantCodeInjector = tenantCodeInjector
-    }
-
-    override fun createViaduct(): Viaduct {
+) {
+    fun createViaduct(): Viaduct {
         return BasicViaductFactory.create(
             schemaRegistrationInfo = SchemaRegistrationInfo(
                 scopes = listOf(

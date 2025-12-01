@@ -159,6 +159,15 @@ abstract class ViaductApplicationPlugin @Inject constructor(
             isCanBeConsumed = false
             isCanBeResolved = true
             isVisible = false
+            // Add attributes for proper runtime classpath resolution with composite builds
+            attributes {
+                attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage::class.java, Usage.JAVA_RUNTIME))
+                attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category::class.java, Category.LIBRARY))
+                attribute(
+                    LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
+                    objects.named(LibraryElements::class.java, LibraryElements.JAR)
+                )
+            }
         }
 
         // Add devserve dependency after evaluation
@@ -167,25 +176,17 @@ abstract class ViaductApplicationPlugin @Inject constructor(
             // External standalone projects will resolve from Maven Central.
             val version = ViaductPluginCommon.BOM.getDefaultVersion()
             dependencies.add(devserveConfig.name, "com.airbnb.viaduct:devserve:$version")
+
+            // Also add devserve as compileOnly so the provider class can be compiled with the annotation
+            dependencies.add("compileOnly", "com.airbnb.viaduct:devserve:$version")
         }
 
-        // Track the server thread across task executions
-        var serverThread: Thread? = null
-
-        // Register JVM shutdown hook to clean up thread
-        Runtime.getRuntime().addShutdownHook(Thread {
-            serverThread?.let {
-                if (it.isAlive) {
-                    println("Stopping devserve server...")
-                    it.interrupt()
-                    it.join(5000)
-                }
-            }
-        })
+        // PID file location for persisting server PID across task executions
+        val pidFile = layout.buildDirectory.file("devserve.pid").get().asFile
 
         tasks.register("devserve") {
             group = "viaduct"
-            description = "Start the Viaduct development server with GraphiQL IDE (use with --continuous for auto-reloading)"
+            description = "Start the Viaduct development server with GraphiQL IDE (use with --continuous for hot-reloading)"
 
             // Mark as not compatible with configuration cache since it needs project access at execution time
             notCompatibleWithConfigurationCache("devserve task requires project access at execution time")
@@ -195,64 +196,108 @@ abstract class ViaductApplicationPlugin @Inject constructor(
             dependsOn("classes")
 
             doLast {
-                // Stop existing server if running
-                serverThread?.let {
-                    if (it.isAlive) {
-                        logger.lifecycle("Stopping previous devserve instance...")
-                        it.interrupt()
-                        it.join(5000)
-                        // Give it a moment to release the port
-                        Thread.sleep(1000)
-                    }
-                }
-
                 // Get the runtime classpath and main classes output
                 val runtimeClasspath = configurations.getByName("runtimeClasspath")
                 val mainOutput = project.extensions.getByType(org.gradle.api.tasks.SourceSetContainer::class.java)
                     .getByName("main").output
 
-                // Build full classpath
-                val fullClasspath = devserveConfig.files + mainOutput.files + runtimeClasspath.files
+                // Build full classpath - app classes first for proper ClassLoader hierarchy
+                val appClasspath = mainOutput.files + runtimeClasspath.files
+                val fullClasspath = devserveConfig.files + appClasspath
 
-                logger.lifecycle("Starting devserve server...")
-                logger.lifecycle("To enable auto-reloading, run: gradle --continuous devserve")
+                val port = project.findProperty("devserve.port")?.toString() ?: "8080"
+                val host = project.findProperty("devserve.host")?.toString() ?: "0.0.0.0"
 
-                // In continuous mode, run javaExec in a background thread so we can return control to Gradle
-                // In normal mode, run javaExec directly (it will block until the server exits)
+                // In continuous mode, use hot-reload via SIGHUP
                 if (gradle.startParameter.isContinuous) {
-                    serverThread = Thread {
+                    // Check if we have a running server from a previous execution
+                    val existingPid = if (pidFile.exists()) {
+                        val pid = pidFile.readText().trim().toLongOrNull()
+                        if (pid != null && isProcessRunning(pid)) pid else null
+                    } else null
+
+                    if (existingPid != null) {
+                        // Server already running - send SIGHUP to trigger hot-reload
+                        logger.lifecycle("Sending reload signal to devserve (PID: $existingPid)...")
                         try {
-                            execOperations.javaexec {
-                                classpath = files(fullClasspath)
-                                mainClass.set("viaduct.devserve.DevServeServerKt")
-                                systemProperty("devserve.port", project.findProperty("devserve.port") ?: "8080")
-                                systemProperty("devserve.host", project.findProperty("devserve.host") ?: "0.0.0.0")
+                            val killProcess = ProcessBuilder("kill", "-HUP", existingPid.toString())
+                                .inheritIO()
+                                .start()
+                            val exitCode = killProcess.waitFor()
+                            if (exitCode == 0) {
+                                logger.lifecycle("Reload signal sent successfully. Check server logs for reload status.")
+                            } else {
+                                logger.warn("Failed to send reload signal (exit code: $exitCode). Server may have stopped.")
+                                pidFile.delete()
                             }
-                        } catch (e: InterruptedException) {
-                            logger.lifecycle("DevServe server interrupted")
+                        } catch (e: Exception) {
+                            logger.warn("Failed to send reload signal: ${e.message}")
+                            pidFile.delete()
                         }
+                    } else {
+                        // First run - start the server process
+                        logger.lifecycle("Starting devserve server with hot-reload support...")
+
+                        val javaHome = System.getProperty("java.home")
+                        val javaExec = "$javaHome/bin/java"
+                        val classpathString = fullClasspath.joinToString(File.pathSeparator) { it.absolutePath }
+                        val appClasspathString = appClasspath.joinToString(File.pathSeparator) { it.absolutePath }
+
+                        val command = listOf(
+                            javaExec,
+                            "-cp", classpathString,
+                            "-Ddevserve.port=$port",
+                            "-Ddevserve.host=$host",
+                            "-Ddevserve.classpath=$appClasspathString",
+                            "viaduct.devserve.DevServeServerKt"
+                        )
+
+                        val serverProcess = ProcessBuilder(command)
+                            .inheritIO()
+                            .start()
+
+                        val serverPid = serverProcess.pid()
+
+                        // Write PID to file for future task executions
+                        pidFile.parentFile.mkdirs()
+                        pidFile.writeText(serverPid.toString())
+
+                        // Give server time to start
+                        Thread.sleep(3000)
+
+                        if (!serverProcess.isAlive) {
+                            pidFile.delete()
+                            throw org.gradle.api.GradleException("DevServe server failed to start")
+                        }
+
+                        logger.lifecycle("DevServe server started (PID: $serverPid)")
+                        logger.lifecycle("Hot-reload enabled - changes will be automatically reloaded")
+                        logger.lifecycle("GraphiQL IDE: http://$host:$port/graphiql")
                     }
-                    serverThread!!.start()
-
-                    // Give server time to start
-                    Thread.sleep(2000)
-
-                    if (!serverThread!!.isAlive) {
-                        throw org.gradle.api.GradleException("DevServe server failed to start")
-                    }
-
-                    logger.lifecycle("DevServe server started. Continuous mode active - watching for changes...")
                 } else {
-                    // Not in continuous mode - run javaExec directly and wait for completion
-                    logger.lifecycle("DevServe server started. Press Ctrl+C to stop.")
+                    // Not in continuous mode - run directly and wait for completion
+                    logger.lifecycle("Starting devserve server...")
+                    logger.lifecycle("Tip: Run with --continuous for hot-reload support")
                     execOperations.javaexec {
                         classpath = files(fullClasspath)
                         mainClass.set("viaduct.devserve.DevServeServerKt")
-                        systemProperty("devserve.port", project.findProperty("devserve.port") ?: "8080")
-                        systemProperty("devserve.host", project.findProperty("devserve.host") ?: "0.0.0.0")
+                        systemProperty("devserve.port", port)
+                        systemProperty("devserve.host", host)
+                        systemProperty("devserve.classpath", appClasspath.joinToString(File.pathSeparator) { it.absolutePath })
                     }
                 }
             }
+        }
+    }
+
+    /** Check if a process with the given PID is still running. */
+    private fun isProcessRunning(pid: Long): Boolean {
+        return try {
+            val process = ProcessBuilder("kill", "-0", pid.toString())
+                .start()
+            process.waitFor() == 0
+        } catch (e: Exception) {
+            false
         }
     }
 

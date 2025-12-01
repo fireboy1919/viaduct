@@ -8,21 +8,16 @@ import ch.qos.logback.classic.Logger
 import com.fasterxml.jackson.databind.ObjectMapper
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
-import viaduct.service.BasicViaductFactory
-import viaduct.service.TenantRegistrationInfo
+import com.example.viadapp.injector.ViaductConfiguration
 import viaduct.service.api.ExecutionInput
 
 fun main(argv: Array<String>) {
     val rootLogger = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME) as Logger
     rootLogger.level = Level.ERROR
 
-    // Create a Viaduct engine using the BasicViaductFactory
-    // tag::building-viaduct[5] Building viaduct from BasicViaductFactory
-    val viaduct = BasicViaductFactory.create(
-        tenantRegistrationInfo = TenantRegistrationInfo(
-            tenantPackagePrefix = "com.example.viadapp"
-        )
-    )
+    // Get the Viaduct instance from shared configuration
+    // tag::building-viaduct[5] Building viaduct from ViaductConfiguration
+    val viaduct = ViaductConfiguration.viaductService
 
     // Create an execution input
     // tag::create-execution-input[12] Creating an execution input

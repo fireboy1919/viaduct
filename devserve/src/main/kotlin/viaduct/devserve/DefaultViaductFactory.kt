@@ -6,10 +6,9 @@ import viaduct.api.Resolver
 import viaduct.service.BasicViaductFactory
 import viaduct.service.TenantRegistrationInfo
 import viaduct.service.api.Viaduct
-import viaduct.service.api.ViaductFactory
 
 /**
- * A default ViaductFactory implementation that uses classpath scanning to automatically
+ * A default ViaductDevServeProvider implementation that uses classpath scanning to automatically
  * discover and register resolvers annotated with @Resolver.
  *
  * This factory provides a zero-configuration development experience:
@@ -20,14 +19,14 @@ import viaduct.service.api.ViaductFactory
  *
  * Usage:
  * ```kotlin
- * @ViaductConfiguration
- * class MyFactory : DefaultViaductFactory()
+ * @ViaductDevServeConfiguration
+ * class MyDevServeProvider : DefaultViaductFactory()
  * ```
  *
  * Or with custom configuration:
  * ```kotlin
- * @ViaductConfiguration
- * class MyFactory : DefaultViaductFactory(
+ * @ViaductDevServeConfiguration
+ * class MyDevServeProvider : DefaultViaductFactory(
  *     packagePrefix = "com.example.myapp"
  * )
  * ```
@@ -37,11 +36,11 @@ import viaduct.service.api.ViaductFactory
  */
 open class DefaultViaductFactory(
     private val packagePrefix: String? = null
-) : ViaductFactory {
+) : ViaductDevServeProvider {
 
     private val logger = LoggerFactory.getLogger(DefaultViaductFactory::class.java)
 
-    override fun createViaduct(): Viaduct {
+    override fun getViaduct(): Viaduct {
         logger.info("Creating Viaduct using DefaultViaductFactory...")
 
         // Discover resolvers
