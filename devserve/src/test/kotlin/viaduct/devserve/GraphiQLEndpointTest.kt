@@ -24,7 +24,7 @@ import kotlin.test.assertTrue
  * 2. GraphQL introspection queries work correctly on /graphql
  * 3. The GraphiQL IDE can successfully fetch the schema
  *
- * Note: These tests require a @ViaductApplication annotated factory on the classpath.
+ * Note: These tests require a @ViaductConfiguration annotated factory on the classpath.
  * The ValidTestFactory in test fixtures provides this.
  */
 class GraphiQLEndpointTest {
