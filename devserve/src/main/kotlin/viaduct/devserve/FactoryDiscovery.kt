@@ -2,12 +2,12 @@ package viaduct.devserve
 
 import io.github.classgraph.ClassGraph
 import org.slf4j.LoggerFactory
-import viaduct.service.api.ViaductApplication
+import viaduct.service.api.ViaductConfiguration
 import viaduct.service.api.ViaductFactory
 import kotlin.reflect.full.createInstance
 
 /**
- * Discovers ViaductFactory implementations annotated with @ViaductApplication
+ * Discovers ViaductFactory implementations annotated with @ViaductConfiguration
  * using classpath scanning.
  */
 object FactoryDiscovery {
@@ -15,7 +15,7 @@ object FactoryDiscovery {
     private val logger = LoggerFactory.getLogger(FactoryDiscovery::class.java)
 
     /**
-     * Scans the classpath to find a class annotated with @ViaductApplication
+     * Scans the classpath to find a class annotated with @ViaductConfiguration
      * that implements ViaductFactory.
      *
      * @return An instance of the discovered factory
@@ -26,24 +26,24 @@ object FactoryDiscovery {
 
         return when (factories.size) {
             0 -> throw IllegalStateException(
-                "No class found with @ViaductApplication annotation. " +
-                "Please create a class that implements ViaductFactory and annotate it with @ViaductApplication."
+                "No class found with @ViaductConfiguration annotation. " +
+                "Please create a class that implements ViaductFactory and annotate it with @ViaductConfiguration."
             )
             1 -> factories.first()
             else -> throw IllegalStateException(
-                "Multiple classes found with @ViaductApplication annotation: ${factories.map { it::class.qualifiedName }}. " +
-                "Only one factory should be annotated with @ViaductApplication per application."
+                "Multiple classes found with @ViaductConfiguration annotation: ${factories.map { it::class.qualifiedName }}. " +
+                "Only one factory should be annotated with @ViaductConfiguration per application."
             )
         }
     }
 
     /**
-     * Finds all classes annotated with @ViaductApplication that implement ViaductFactory.
+     * Finds all classes annotated with @ViaductConfiguration that implement ViaductFactory.
      *
      * @return List of instantiated factory instances
      */
     private fun findFactoryClasses(): List<ViaductFactory> {
-        val annotationName = ViaductApplication::class.java.name
+        val annotationName = ViaductConfiguration::class.java.name
 
         return ClassGraph()
             .enableAnnotationInfo()
@@ -59,7 +59,7 @@ object FactoryDiscovery {
                             // Verify it implements ViaductFactory
                             if (!ViaductFactory::class.java.isAssignableFrom(loadedClass)) {
                                 logger.warn(
-                                    "Skipping ${classInfo.name}: annotated with @ViaductApplication " +
+                                    "Skipping ${classInfo.name}: annotated with @ViaductConfiguration " +
                                     "but does not implement ViaductFactory"
                                 )
                                 return@mapNotNull null

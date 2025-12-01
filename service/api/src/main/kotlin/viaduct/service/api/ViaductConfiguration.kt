@@ -1,18 +1,18 @@
 package viaduct.service.api
 
 /**
- * Marks a [ViaductFactory] implementation as the application's Viaduct factory.
+ * Marks a [ViaductFactory] implementation as the application's Viaduct configuration.
  *
  * This annotation enables automatic discovery of your factory in development mode:
  * - The `./gradlew devserve` task uses classpath scanning to find the annotated factory
- * - Only one class per application should be annotated with @ViaductApplication
+ * - Only one class per application should be annotated with @ViaductConfiguration
  *
  * The annotation can also be used in production environments for consistent factory
  * discovery across different deployment contexts.
  *
  * Example:
  * ```kotlin
- * @ViaductApplication
+ * @ViaductConfiguration
  * class MyViaductFactory : ViaductFactory {
  *     override fun createViaduct(): Viaduct {
  *         return ViaductBuilder()
@@ -27,4 +27,4 @@ package viaduct.service.api
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
 @MustBeDocumented
-annotation class ViaductApplication
+annotation class ViaductConfiguration

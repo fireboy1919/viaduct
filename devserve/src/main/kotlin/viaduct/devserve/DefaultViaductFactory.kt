@@ -20,13 +20,13 @@ import viaduct.service.api.ViaductFactory
  *
  * Usage:
  * ```kotlin
- * @ViaductApplication
+ * @ViaductConfiguration
  * class MyFactory : DefaultViaductFactory()
  * ```
  *
  * Or with custom configuration:
  * ```kotlin
- * @ViaductApplication
+ * @ViaductConfiguration
  * class MyFactory : DefaultViaductFactory(
  *     packagePrefix = "com.example.myapp"
  * )

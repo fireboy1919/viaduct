@@ -4,7 +4,7 @@ import viaduct.service.BasicViaductFactory
 import viaduct.service.SchemaRegistrationInfo
 import viaduct.service.TenantRegistrationInfo
 import viaduct.service.api.Viaduct
-import viaduct.service.api.ViaductApplication
+import viaduct.service.api.ViaductConfiguration
 import viaduct.service.api.ViaductFactory
 import viaduct.service.api.spi.TenantCodeInjector
 import viaduct.service.toSchemaScopeInfo
@@ -18,7 +18,7 @@ import viaduct.service.toSchemaScopeInfo
  * 1. Production mode (via ViaductConfiguration): Micronaut provides the injector
  * 2. DevServe mode (no-arg constructor): Starts Micronaut and gets the injector
  */
-@ViaductApplication
+@ViaductConfiguration
 class StarWarsViaductFactory : ViaductFactory {
     private val tenantCodeInjector: TenantCodeInjector
 

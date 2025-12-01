@@ -10,7 +10,7 @@ import kotlin.test.assertTrue
  * Tests for FactoryDiscovery classpath scanning functionality.
  *
  * Note: These tests rely on the test fixtures in the fixtures package.
- * The behavior depends on having exactly one valid @ViaductApplication
+ * The behavior depends on having exactly one valid @ViaductConfiguration
  * annotated factory with a no-arg constructor on the test classpath.
  */
 class FactoryDiscoveryTest {
@@ -35,7 +35,7 @@ class FactoryDiscoveryTest {
     fun `discoverFactory should throw when no factory found`() {
         // This test would require isolating the classpath
         // For now, we document the expected behavior:
-        // When: No @ViaductApplication annotated factory exists
+        // When: No @ViaductConfiguration annotated factory exists
         // Then: Should throw IllegalStateException with helpful message
 
         // We can't easily test this without classpath isolation,

@@ -3,7 +3,7 @@ package viaduct.service.api
 /**
  * Factory interface for creating Viaduct instances.
  *
- * Implement this interface and annotate your implementation with [@ViaductApplication][ViaductApplication]
+ * Implement this interface and annotate your implementation with [@ViaductConfiguration][ViaductConfiguration]
  * to enable automatic discovery in development mode (`./gradlew devserve`).
  *
  * This factory pattern can also be used in production for consistent Viaduct initialization
@@ -15,7 +15,7 @@ package viaduct.service.api
  * which automatically discovers resolvers using classpath scanning:
  *
  * ```kotlin
- * @ViaductApplication
+ * @ViaductConfiguration
  * class MyFactory : DefaultViaductFactory()
  * ```
  *
@@ -30,7 +30,7 @@ package viaduct.service.api
  * For production or custom needs, implement ViaductFactory directly:
  *
  * ```kotlin
- * @ViaductApplication
+ * @ViaductConfiguration
  * class MyViaductFactory : ViaductFactory {
  *     override fun createViaduct(): Viaduct {
  *         return ViaductBuilder()
@@ -42,7 +42,7 @@ package viaduct.service.api
  * }
  * ```
  *
- * @see ViaductApplication
+ * @see ViaductConfiguration
  */
 interface ViaductFactory {
     /**
