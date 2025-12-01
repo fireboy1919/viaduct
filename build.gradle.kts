@@ -50,8 +50,16 @@ reporting {
 }
 
 // Coverage verification with reasonable thresholds
+// Use the aggregated report from jacoco-report-aggregation plugin
+val testCodeCoverageReportTask = tasks.named<JacocoReport>("testCodeCoverageReport")
+
 tasks.register<JacocoCoverageVerification>("testCodeCoverageVerification") {
-    dependsOn("testCodeCoverageReport")
+    dependsOn(testCodeCoverageReportTask)
+
+    // Use execution data and class directories from the aggregated report
+    executionData.setFrom(testCodeCoverageReportTask.map { it.executionData })
+    classDirectories.setFrom(testCodeCoverageReportTask.map { it.classDirectories })
+    sourceDirectories.setFrom(testCodeCoverageReportTask.map { it.sourceDirectories })
 
     violationRules {
         rule {
