@@ -1,13 +1,13 @@
 ---
 title: Development Server (devserve)
-description: Run your Viaduct application with auto-reloading for rapid development
+description: Run your Viaduct application with GraphiQL IDE and auto-reloading
 weight: 100
 ---
 
 ## Overview
 
 The `devserve` task provides a development server for Viaduct applications with:
-- **GraphQL endpoint**: Full GraphQL API at `/graphql`
+- **GraphiQL IDE**: Interactive GraphQL explorer in your browser
 - **Auto-reloading**: Automatic reloading when schema or code changes
 - **Zero configuration**: Works out-of-the-box with any Viaduct application
 
@@ -33,6 +33,7 @@ To start the development server:
 
 The server will start on `http://localhost:8080` by default and provide:
 - GraphQL endpoint: `http://localhost:8080/graphql`
+- GraphiQL IDE: `http://localhost:8080/graphiql`
 - Health check: `http://localhost:8080/health`
 
 Press `Ctrl+C` to stop the server.
@@ -66,7 +67,7 @@ In continuous mode:
    - Regenerates GRT classes if schema files changed
    - Recompiles Kotlin code if source files changed
    - Restarts the devserve server with fresh code
-3. Your GraphQL clients automatically reconnect to the new server instance
+3. The browser automatically reconnects to the new server instance
 
 This provides a fast development loop where you can edit schema and code files and see changes reflected immediately.
 
@@ -86,12 +87,7 @@ A typical development workflow with auto-reloading:
    ./gradlew --continuous devserve
    ```
 
-2. Use a GraphQL client (like curl or Postman) to query the API:
-   ```shell
-   curl -X POST http://localhost:8080/graphql \
-     -H "Content-Type: application/json" \
-     -d '{"query": "{ __schema { types { name } } }"}'
-   ```
+2. Open GraphiQL in your browser: `http://localhost:8080/graphiql`
 
 3. Make changes to your schema or resolvers:
    ```graphql
@@ -102,83 +98,71 @@ A typical development workflow with auto-reloading:
    }
    ```
 
-4. Gradle detects the change and reloads automatically
+4. Gradle automatically detects the change, regenerates code, and restarts the server
 
-5. Query the API again to see your changes
+5. Refresh GraphiQL to see the new field in the schema
 
-## How It Works
+## Using GraphiQL
 
-### ViaductDevServeProvider
+GraphiQL provides an interactive environment for exploring and testing your GraphQL API:
 
-The devserve system uses a provider pattern to get the Viaduct instance from your application. You implement `ViaductDevServeProvider` to tell devserve how to create your Viaduct:
+### Features
 
-```kotlin
-@ViaductDevServeConfiguration
-class MyDevServeProvider : ViaductDevServeProvider {
-    override fun getViaduct(): Viaduct {
-        // Return your configured Viaduct instance
-        return MyViaductConfiguration.viaductService
+- **Query Editor**: Write and execute GraphQL queries
+- **Schema Documentation**: Browse your schema's types and fields
+- **Auto-completion**: Get suggestions as you type
+- **Query History**: Access previously executed queries
+- **Variables Panel**: Test queries with different variable values
+
+### Example Query
+
+Try this query in GraphiQL:
+
+```graphql
+{
+  allCharacters(limit: 5) {
+    name
+    birthYear
+    homeworld {
+      name
     }
+  }
 }
 ```
-
-The `@ViaductDevServeConfiguration` annotation marks your provider class for discovery by the devserve system.
-
-### Shared Configuration Pattern
-
-For best results, share the same Viaduct configuration between your production code and devserve:
-
-```kotlin
-// In your application
-object ViaductConfiguration {
-    val viaductService: Viaduct by lazy {
-        BasicViaductFactory.create(
-            tenantRegistrationInfo = TenantRegistrationInfo(
-                tenantPackagePrefix = "com.example.myapp"
-            )
-        )
-    }
-}
-```
-
-This ensures devserve uses the exact same configuration as your production application.
-
-## Hot Reload via SIGHUP
-
-In addition to Gradle's continuous mode, devserve supports hot-reload via the SIGHUP signal:
-
-```shell
-kill -HUP $(pgrep -f devserve)
-```
-
-This triggers a reload without restarting the server process, useful for custom automation scripts.
 
 ## Troubleshooting
 
-### Server Won't Start
+### Port Already in Use
 
-1. Check if another process is using port 8080:
-   ```shell
-   lsof -i :8080
-   ```
+If port 8080 is already in use, either:
+- Stop the process using the port
+- Use a different port with `-Pdevserve.port=<port>`
 
-2. Try a different port:
-   ```shell
-   ./gradlew devserve -Pdevserve.port=3000
-   ```
+### Server Not Restarting in Continuous Mode
 
-### Changes Not Detected
+If the server doesn't restart after changes:
+1. Check that you're using `--continuous` flag
+2. Verify your changes are in watched files (schema or source code)
+3. Check Gradle output for any compilation errors
+4. Try stopping and restarting the continuous build
 
-1. Ensure you're using continuous mode:
-   ```shell
-   ./gradlew --continuous devserve
-   ```
+### Changes Not Reflected
 
-2. Check that your files are in watched directories (`src/main/kotlin`, etc.)
+If code changes don't appear in GraphiQL:
+1. Hard refresh your browser (`Cmd+Shift+R` or `Ctrl+Shift+F5`)
+2. Check the Gradle output for any errors during recompilation
+3. Verify the server actually restarted (look for "Starting devserve server..." in logs)
 
-### ClassLoader Issues
+## Comparison with Production
 
-If you see `ClassNotFoundException` or similar errors after reload:
-1. Stop the server completely
-2. Run a clean build: `./gradlew clean build`
-3. Restart devserve
+`devserve` is for development only. For production deployments:
+- Configure your actual HTTP server (Ktor, Jetty, etc.)
+- Set up proper authentication and authorization
+- Configure production logging and monitoring
+- Review the [Service Engineers](../../service_engineers/) documentation
+
+## Next Steps
+
+- Learn about [Testing](../testing/) your Viaduct application
+- Explore [Resolvers](../resolvers/) to add business logic
+- Understand [Schema Management](../schema_change_management/) for evolving your API

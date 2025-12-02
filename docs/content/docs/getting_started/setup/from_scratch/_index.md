@@ -110,13 +110,13 @@ or
 
 ### Using the Development Server
 
-For interactive development, you can use the development server:
+For interactive development with GraphiQL IDE, you can use the development server:
 
 ```shell
 ./gradlew devserve
 ```
 
-You can then send GraphQL queries to `http://localhost:8080/graphql` using curl or any GraphQL client.
+Then open `http://localhost:8080/graphiql` in your browser to explore your GraphQL API interactively.
 
 For auto-reloading during development:
 

@@ -13,6 +13,7 @@ import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.request.receiveText
+import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
@@ -32,6 +33,7 @@ import java.net.URLClassLoader
  *
  * Provides:
  * - GraphQL endpoint at POST /graphql
+ * - GraphiQL IDE at GET /graphiql
  * - Health check at GET /health
  * - Hot-reload via SIGHUP signal
  */
@@ -97,6 +99,7 @@ class DevServeServer(
                 loggerRef.info("Viaduct DevServe running on port: $actualPort")
             }
             loggerRef.info("Server address: http://$hostRef:$actualPort")
+            loggerRef.info("GraphiQL IDE: http://$hostRef:$actualPort/graphiql")
             loggerRef.info("Hot-reload enabled: send SIGHUP to reload (kill -HUP ${ProcessHandle.current().pid()})")
 
             // Add shutdown hook
@@ -251,7 +254,12 @@ class DevServeServer(
                     val body = call.receiveText()
                     val request = mapperRef.readValue<GraphQLRequest>(body)
 
-                    loggerRef.debug("Executing GraphQL query: ${request.query}")
+                    // Log introspection queries for debugging
+                    if (request.operationName == "IntrospectionQuery") {
+                        loggerRef.info("Received schema introspection query from GraphiQL")
+                    } else {
+                        loggerRef.debug("Executing GraphQL query: ${request.query}")
+                    }
 
                     val executionInput = ExecutionInput.create(
                         operationText = request.query,
@@ -289,6 +297,44 @@ class DevServeServer(
                     val json = mapperRef.writeValueAsString(errorResponse)
                     call.respondText(json, ContentType.Application.Json, HttpStatusCode.InternalServerError)
                 }
+            }
+
+            // GraphiQL IDE
+            get("/graphiql") {
+                call.respondText(graphiQLHtml(), ContentType.Text.Html)
+            }
+
+            // Serve GraphiQL static resources (JS files for plugins)
+            get("/js/{file}") {
+                val file = call.parameters["file"]
+                if (file != null) {
+                    val resourcePath = "/graphiql/js/$file"
+                    val resourceStream = this::class.java.getResourceAsStream(resourcePath)
+
+                    if (resourceStream != null) {
+                        val content = resourceStream.bufferedReader().use { it.readText() }
+                        val contentType = when {
+                            file.endsWith(".js") -> ContentType.Text.JavaScript
+                            file.endsWith(".jsx") -> ContentType.Text.JavaScript
+                            else -> ContentType.Application.OctetStream
+                        }
+                        call.respondText(content, contentType)
+                    } else {
+                        loggerRef.warn("Static resource not found: $resourcePath")
+                        call.respond(HttpStatusCode.NotFound, "File not found: $file")
+                    }
+                } else {
+                    call.respond(HttpStatusCode.BadRequest, "File parameter missing")
+                }
+            }
+
+            // Root redirects to GraphiQL
+            get("/") {
+                call.respondText(
+                    """<html><head><meta http-equiv="refresh" content="0; url=/graphiql"></head></html>""",
+                    ContentType.Text.Html,
+                    HttpStatusCode.OK
+                )
             }
         }
     }

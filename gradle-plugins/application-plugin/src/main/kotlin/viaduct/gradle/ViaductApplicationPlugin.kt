@@ -186,7 +186,7 @@ abstract class ViaductApplicationPlugin @Inject constructor(
 
         tasks.register("devserve") {
             group = "viaduct"
-            description = "Start the Viaduct development server (use with --continuous for hot-reloading)"
+            description = "Start the Viaduct development server with GraphiQL IDE (use with --continuous for hot-reloading)"
 
             // Mark as not compatible with configuration cache since it needs project access at execution time
             notCompatibleWithConfigurationCache("devserve task requires project access at execution time")
@@ -272,7 +272,7 @@ abstract class ViaductApplicationPlugin @Inject constructor(
 
                         logger.lifecycle("DevServe server started (PID: $serverPid)")
                         logger.lifecycle("Hot-reload enabled - changes will be automatically reloaded")
-                        logger.lifecycle("GraphQL endpoint: http://$host:$port/graphql")
+                        logger.lifecycle("GraphiQL IDE: http://$host:$port/graphiql")
                     }
                 } else {
                     // Not in continuous mode - run directly and wait for completion

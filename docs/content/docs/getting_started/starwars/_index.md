@@ -38,13 +38,13 @@ Follow the instructions in the repository's README to build and run the applicat
 
 ### Using the Development Server
 
-For interactive development, use the development server:
+For interactive development with GraphiQL IDE, use the development server:
 
 ```shell
 ./gradlew devserve
 ```
 
-You can then send GraphQL queries to `http://localhost:8080/graphql` using curl or any GraphQL client.
+Then open `http://localhost:8080/graphiql` in your browser to explore the StarWars GraphQL API.
 
 For auto-reloading during development (automatically reloads when you edit schema or code files):
 

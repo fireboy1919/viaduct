@@ -1,3 +1,5 @@
+import viaduct.devserve.GraphiQLHtmlCustomizer
+
 plugins {
     id("conventions.kotlin")
     `maven-publish`
@@ -34,7 +36,7 @@ publishing {
 
             pom {
                 name.set("Viaduct DevServe")
-                description.set("Development server runtime for Viaduct GraphQL applications")
+                description.set("Development server runtime for Viaduct GraphQL applications with GraphiQL IDE")
                 url.set("https://airbnb.io/viaduct/")
                 licenses {
                     license {
@@ -94,4 +96,56 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit)
     testRuntimeOnly(libs.junit.engine)
+}
+
+/**
+ * Downloads and customizes the official GraphiQL CDN example HTML.
+ *
+ * Downloads the base HTML from a specific GraphiQL release and applies Viaduct customizations
+ * by parsing the HTML structure and inserting our code at appropriate locations.
+ * This is more robust than text-based patches as it adapts to HTML structure changes.
+ *
+ * To upgrade GraphiQL:
+ * 1. Update graphiqlGitTag below to the new release (e.g., "graphiql@5.3.0")
+ * 2. Run: ./gradlew :devserve:downloadGraphiQLHtml
+ * 3. Test the result
+ */
+val downloadGraphiQLHtml by tasks.registering {
+    group = "build"
+    description = "Download and customize GraphiQL HTML from official repository"
+
+    // GraphiQL release tag to use - update this to upgrade
+    val graphiqlGitTag = "graphiql@5.2.1"
+
+    val outputDir = layout.buildDirectory.dir("resources/main/graphiql")
+    val outputFile = outputDir.map { it.file("index.html") }
+
+    outputs.file(outputFile)
+    outputs.cacheIf { true }
+
+    doLast {
+        val sourceUrl = "https://raw.githubusercontent.com/graphql/graphiql/$graphiqlGitTag/examples/graphiql-cdn/index.html"
+
+        logger.lifecycle("Downloading GraphiQL HTML from: $sourceUrl")
+        logger.lifecycle("Applying Viaduct customizations...")
+
+        val customizer = GraphiQLHtmlCustomizer(
+            sourceUrl = sourceUrl,
+            outputFile = outputFile.get().asFile
+        )
+        customizer.customize()
+
+        logger.lifecycle("GraphiQL HTML customized and saved to: ${outputFile.get().asFile}")
+        logger.lifecycle("Based on GraphiQL release: $graphiqlGitTag")
+    }
+}
+
+// Ensure GraphiQL HTML is downloaded before processing resources
+tasks.named("processResources") {
+    dependsOn(downloadGraphiQLHtml)
+}
+
+// Clean up downloaded GraphiQL
+tasks.named<Delete>("clean") {
+    delete(layout.buildDirectory.dir("resources/main/graphiql"))
 }
