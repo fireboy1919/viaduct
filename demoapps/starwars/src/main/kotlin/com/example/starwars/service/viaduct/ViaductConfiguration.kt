@@ -2,12 +2,8 @@ package com.example.starwars.service.viaduct
 
 import io.micronaut.context.annotation.Bean
 import io.micronaut.context.annotation.Factory
-import viaduct.service.BasicViaductFactory
-import viaduct.service.SchemaRegistrationInfo
-import viaduct.service.TenantRegistrationInfo
 import viaduct.service.api.SchemaId
 import viaduct.service.api.Viaduct
-import viaduct.service.toSchemaScopeInfo
 
 const val DEFAULT_SCOPE_ID = "default"
 const val EXTRAS_SCOPE_ID = "extras"
@@ -20,18 +16,9 @@ class ViaductConfiguration(
 ) {
     @Bean
     fun providesViaduct(): Viaduct {
-        return BasicViaductFactory.create(
-            schemaRegistrationInfo = SchemaRegistrationInfo(
-                scopes = listOf(
-                    DEFAULT_SCHEMA_ID.toSchemaScopeInfo(),
-                    EXTRAS_SCHEMA_ID.toSchemaScopeInfo(),
-                )
-                // grtPackagePrefix and grtResourcesIncluded not set - using defaults
-            ),
-            tenantRegistrationInfo = TenantRegistrationInfo(
-                tenantPackagePrefix = "com.example.starwars",
-                tenantCodeInjector = micronautTenantCodeInjector
-            )
-        )
+        // Use StarWarsViaductFactory to create the Viaduct instance
+        // This ensures both production and devserve use the same factory
+        val factory = StarWarsViaductFactory(micronautTenantCodeInjector)
+        return factory.createViaduct()
     }
 }

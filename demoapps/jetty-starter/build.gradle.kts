@@ -1,5 +1,5 @@
 plugins {
-    alias(libs.plugins.kotlinJvm)
+    kotlin("jvm") version "1.9.24"
     alias(libs.plugins.viaduct.application)
     application
 }
