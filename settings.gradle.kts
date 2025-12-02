@@ -23,7 +23,7 @@ includeBuild("gradle-plugins") {
     }
 }
 
-// demo apps
+// demo apps - devserve-runtime automatically substituted by root build
 includeBuild("demoapps/cli-starter")
 includeBuild("demoapps/jetty-starter")
 includeBuild("demoapps/ktor-starter")
@@ -34,6 +34,9 @@ include(":tenant:codegen-integration-tests")
 include(":tenant:api-integration-tests")
 include(":tenant:runtime-integration-tests")
 include(":tenant:tutorials")
+
+// devserve
+include(":devserve")
 
 // misc
 include(":docs")

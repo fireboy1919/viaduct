@@ -36,6 +36,24 @@ Follow the instructions in the repository's README to build and run the applicat
 ./gradlew run
 ```
 
+### Using the Development Server
+
+For interactive development, use the development server:
+
+```shell
+./gradlew devserve
+```
+
+You can then send GraphQL queries to `http://localhost:8080/graphql` using curl or any GraphQL client.
+
+For auto-reloading during development (automatically reloads when you edit schema or code files):
+
+```shell
+./gradlew --continuous devserve
+```
+
+Learn more in the [Development Server documentation](../../developers/devserve/).
+
 After exploring the StarWars application, you'll have a solid understanding of how to build production-ready GraphQL
 applications with Viaduct.
 
