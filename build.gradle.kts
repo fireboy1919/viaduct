@@ -48,6 +48,36 @@ reporting {
     }
 }
 
+// Coverage verification with reasonable thresholds
+// Use the aggregated report from jacoco-report-aggregation plugin
+val testCodeCoverageReportTask = tasks.named<JacocoReport>("testCodeCoverageReport")
+
+tasks.register<JacocoCoverageVerification>("testCodeCoverageVerification") {
+    dependsOn(testCodeCoverageReportTask)
+
+    // Use execution data and class directories from the aggregated report
+    executionData.setFrom(testCodeCoverageReportTask.map { it.executionData })
+    classDirectories.setFrom(testCodeCoverageReportTask.map { it.classDirectories })
+    sourceDirectories.setFrom(testCodeCoverageReportTask.map { it.sourceDirectories })
+
+    violationRules {
+        rule {
+            limit {
+                counter = "INSTRUCTION"
+                value = "COVEREDRATIO"
+                minimum = "0.10".toBigDecimal() // 10% minimum instruction coverage
+            }
+        }
+        rule {
+            limit {
+                counter = "BRANCH"
+                value = "COVEREDRATIO"
+                minimum = "0.05".toBigDecimal() // 5% minimum branch coverage
+            }
+        }
+    }
+}
+
 // GitHub Actions-friendly task to run tests and generate coverage
 tasks.register("testAndCoverage") {
     description = "Runs tests and generates coverage reports"
