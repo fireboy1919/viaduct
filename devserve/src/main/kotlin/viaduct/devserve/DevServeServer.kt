@@ -34,7 +34,6 @@ import java.net.URLClassLoader
  * Provides:
  * - GraphQL endpoint at POST /graphql
  * - GraphiQL IDE at GET /graphiql
- * - Health check at GET /health
  * - Hot-reload via SIGHUP signal
  */
 class DevServeServer(
@@ -221,11 +220,6 @@ class DevServeServer(
         }
 
         routing {
-            // Health check endpoint
-            get("/health") {
-                call.respondText("OK", ContentType.Text.Plain, HttpStatusCode.OK)
-            }
-
             // Reload endpoint (alternative to SIGHUP)
             post("/reload") {
                 loggerRef.info("Reload requested via HTTP")
