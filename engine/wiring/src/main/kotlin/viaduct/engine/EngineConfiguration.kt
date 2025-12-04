@@ -13,7 +13,7 @@ import viaduct.engine.api.fragment.ViaductExecutableFragmentParser
 import viaduct.engine.api.instrumentation.resolver.ViaductResolverInstrumentation
 import viaduct.engine.runtime.ViaductFragmentLoader
 import viaduct.engine.runtime.execution.DefaultCoroutineInterop
-import viaduct.engine.runtime.execution.ViaductDataFetcherExceptionHandler
+import viaduct.tenant.runtime.execution.ViaductDataFetcherExceptionHandler
 import viaduct.service.api.spi.FlagManager
 import viaduct.service.api.spi.GlobalIDCodec
 import viaduct.service.api.spi.ResolverErrorBuilder

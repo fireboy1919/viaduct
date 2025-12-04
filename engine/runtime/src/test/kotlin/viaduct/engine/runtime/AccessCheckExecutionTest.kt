@@ -19,7 +19,7 @@ import viaduct.engine.api.mocks.mkEngineObjectData
 import viaduct.engine.api.mocks.mkRSS
 import viaduct.engine.api.mocks.mkSchemaWithWiring
 import viaduct.engine.api.mocks.runFeatureTest
-import viaduct.engine.runtime.execution.ViaductDataFetcherExceptionHandler
+import viaduct.tenant.runtime.execution.ViaductDataFetcherExceptionHandler
 import viaduct.service.api.spi.ResolverErrorBuilder
 import viaduct.service.api.spi.ResolverErrorReporter
 

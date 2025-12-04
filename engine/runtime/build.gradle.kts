@@ -29,7 +29,6 @@ dependencies {
     implementation(libs.viaduct.shared.graphql)
     implementation(libs.viaduct.shared.logging)
     implementation(libs.viaduct.snipped.errors)
-    implementation(libs.viaduct.tenant.api)
     implementation(libs.micrometer.core)
 
     testFixturesApi(libs.graphql.java)
@@ -58,6 +57,7 @@ dependencies {
     testImplementation(libs.strikt.core)
     testImplementation(libs.viaduct.engine.wiring)
     testImplementation(libs.viaduct.service.runtime)
+    testImplementation(libs.viaduct.tenant.runtime)
     testImplementation(libs.viaduct.shared.arbitrary)
     testImplementation(testFixtures(libs.viaduct.engine.api))
     testImplementation(testFixtures(libs.viaduct.engine.runtime))

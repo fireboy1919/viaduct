@@ -31,7 +31,7 @@ import viaduct.engine.api.coroutines.CoroutineInterop
 import viaduct.engine.api.instrumentation.resolver.ViaductResolverInstrumentation
 import viaduct.engine.runtime.execution.DefaultCoroutineInterop
 import viaduct.engine.runtime.execution.TenantNameResolver
-import viaduct.engine.runtime.execution.ViaductDataFetcherExceptionHandler
+import viaduct.tenant.runtime.execution.ViaductDataFetcherExceptionHandler
 import viaduct.engine.runtime.tenantloading.DispatcherRegistryFactory
 import viaduct.engine.runtime.tenantloading.RequiredSelectionsAreInvalid
 import viaduct.service.api.ExecutionInput

@@ -1,4 +1,4 @@
-package viaduct.engine.runtime.execution
+package viaduct.tenant.runtime.execution
 
 import com.airbnb.viaduct.errors.ViaductException
 import graphql.Scalars
