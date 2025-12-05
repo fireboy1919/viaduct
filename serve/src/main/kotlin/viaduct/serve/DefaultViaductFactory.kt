@@ -8,40 +8,29 @@ import viaduct.service.TenantRegistrationInfo
 import viaduct.service.api.Viaduct
 
 /**
- * A default ViaductServerProvider implementation that uses classpath scanning to automatically
+ * Internal default ViaductServerProvider implementation that uses classpath scanning to automatically
  * discover and register resolvers annotated with @Resolver.
  *
- * This factory provides a zero-configuration development experience:
+ * This factory is used as the fallback when no @ViaductServerConfiguration is found on the classpath.
+ * It provides a zero-configuration experience for simple applications:
  * - Scans the classpath for @Resolver annotated classes
  * - Automatically determines the package prefix from discovered resolvers
  * - Uses default (no-argument) constructors to instantiate resolvers
- * - Configures Viaduct with sensible defaults for development
  *
- * Usage:
- * ```kotlin
- * @ViaductServerConfiguration
- * class MyViaduct ServerProvider : DefaultViaductFactory()
- * ```
- *
- * Or with custom configuration:
- * ```kotlin
- * @ViaductServerConfiguration
- * class MyViaduct ServerProvider : DefaultViaductFactory(
- *     packagePrefix = "com.example.myapp"
- * )
- * ```
- *
- * @param packagePrefix Optional package prefix to limit resolver scanning.
- *                      If not provided, will be auto-detected from discovered resolvers.
+ * Limitations:
+ * - Only works with resolvers that have no-argument constructors
+ * - Cannot inject dependencies into resolvers
+ * - For more complex setups, create a custom ViaductServerProvider
  */
-open class DefaultViaductFactory(
-    private val packagePrefix: String? = null
-) : ViaductServerProvider {
+internal class DefaultViaductFactory : ViaductServerProvider {
 
     private val logger = LoggerFactory.getLogger(DefaultViaductFactory::class.java)
 
     override fun getViaduct(): Viaduct {
-        logger.info("Creating Viaduct using DefaultViaductFactory...")
+        logger.info("No @ViaductServerConfiguration found. Using default classpath scanning.")
+        logger.info("NOTE: Default mode only works with @Resolver classes that have zero-argument constructors.")
+        logger.info("For dependency injection or custom configuration, create a class implementing ViaductServerProvider")
+        logger.info("and annotate it with @ViaductServerConfiguration.")
 
         // Discover resolvers
         val resolvers = discoverResolvers()
@@ -54,8 +43,8 @@ open class DefaultViaductFactory(
             logger.warn("  3. Are on the classpath")
         }
 
-        // Determine package prefix
-        val effectivePackagePrefix = packagePrefix ?: detectPackagePrefix(resolvers)
+        // Determine package prefix from discovered resolvers
+        val effectivePackagePrefix = detectPackagePrefix(resolvers)
 
         logger.info("Using package prefix: $effectivePackagePrefix")
         logger.info("Found ${resolvers.size} resolver(s): ${resolvers.map { it.simpleName }}")
@@ -79,10 +68,6 @@ open class DefaultViaductFactory(
         return ClassGraph()
             .enableAnnotationInfo()
             .enableClassInfo()
-            .apply {
-                // Limit scan to package prefix if provided
-                packagePrefix?.let { acceptPackages(it) }
-            }
             .scan()
             .use { scanResult ->
                 scanResult

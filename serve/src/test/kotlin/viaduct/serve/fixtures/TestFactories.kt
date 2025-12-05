@@ -1,19 +1,19 @@
 package viaduct.serve.fixtures
 
+import viaduct.serve.ViaductServerConfiguration
+import viaduct.serve.ViaductServerProvider
 import viaduct.service.BasicViaductFactory
 import viaduct.service.TenantRegistrationInfo
 import viaduct.service.api.Viaduct
-import viaduct.service.api.ViaductConfiguration
-import viaduct.service.api.ViaductFactory
 
 /**
- * Test fixture: A valid factory with @ViaductConfiguration annotation.
+ * Test fixture: A valid provider with @ViaductServerConfiguration annotation.
  * Creates a minimal Viaduct instance for testing purposes.
  * Uses BasicViaductFactory with the test fixtures package prefix.
  */
-@ViaductConfiguration
-class ValidTestFactory : ViaductFactory {
-    override fun createViaduct(): Viaduct {
+@ViaductServerConfiguration
+class ValidTestProvider : ViaductServerProvider {
+    override fun getViaduct(): Viaduct {
         // Create a minimal Viaduct using BasicViaductFactory
         // This will discover any @Resolver annotated test resolvers
         return BasicViaductFactory.create(
@@ -25,39 +25,39 @@ class ValidTestFactory : ViaductFactory {
 }
 
 /**
- * Test fixture: Another valid factory without annotation
- * (To test multiple factory detection, this would need to be annotated,
+ * Test fixture: Another valid provider without annotation
+ * (To test multiple provider detection, this would need to be annotated,
  * but leaving it unannotated allows other tests to pass)
  */
-class AnotherValidTestFactory : ViaductFactory {
-    override fun createViaduct(): Viaduct {
-        throw NotImplementedError("Test factory - should not be called")
+class AnotherValidTestProvider : ViaductServerProvider {
+    override fun getViaduct(): Viaduct {
+        throw NotImplementedError("Test provider - should not be called")
     }
 }
 
 /**
- * Test fixture: Factory without annotation (should be ignored)
+ * Test fixture: Provider without annotation (should be ignored)
  */
-class FactoryWithoutAnnotation : ViaductFactory {
-    override fun createViaduct(): Viaduct {
-        throw NotImplementedError("Test factory - should not be called")
+class ProviderWithoutAnnotation : ViaductServerProvider {
+    override fun getViaduct(): Viaduct {
+        throw NotImplementedError("Test provider - should not be called")
     }
 }
 
 /**
- * Test fixture: Annotated class that doesn't implement ViaductFactory
+ * Test fixture: Annotated class that doesn't implement ViaductServerProvider
  */
-@ViaductConfiguration
-class AnnotatedNonFactory {
-    fun doSomething() = "not a factory"
+@ViaductServerConfiguration
+class AnnotatedNonProvider {
+    fun doSomething() = "not a provider"
 }
 
 /**
- * Test fixture: Factory without no-arg constructor
+ * Test fixture: Provider without no-arg constructor
  */
-@ViaductConfiguration
-class FactoryWithoutNoArgConstructor(private val param: String) : ViaductFactory {
-    override fun createViaduct(): Viaduct {
-        throw NotImplementedError("Test factory - should not be called")
+@ViaductServerConfiguration
+class ProviderWithoutNoArgConstructor(private val param: String) : ViaductServerProvider {
+    override fun getViaduct(): Viaduct {
+        throw NotImplementedError("Test provider - should not be called")
     }
 }

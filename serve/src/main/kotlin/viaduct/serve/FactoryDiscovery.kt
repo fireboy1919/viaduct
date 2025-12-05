@@ -16,17 +16,20 @@ object FactoryDiscovery {
      * Scans the classpath to find a class annotated with @ViaductServerConfiguration
      * that implements ViaductServerProvider.
      *
-     * @return An instance of the discovered provider
-     * @throws IllegalStateException if no provider is found or multiple providers are found
+     * If no provider is found, falls back to DefaultViaductFactory which uses
+     * classpath scanning to discover @Resolver annotated classes with no-arg constructors.
+     *
+     * @return An instance of the discovered provider, or DefaultViaductFactory if none found
+     * @throws IllegalStateException if multiple providers are found
      */
     fun discoverProvider(): ViaductServerProvider {
         val providers = findProviderClasses()
 
         return when (providers.size) {
-            0 -> throw IllegalStateException(
-                "No class found with @ViaductServerConfiguration annotation. " +
-                "Please create a class that implements ViaductServerProvider and annotate it with @ViaductServerConfiguration."
-            )
+            0 -> {
+                logger.info("No @ViaductServerConfiguration found, using default classpath scanning")
+                DefaultViaductFactory()
+            }
             1 -> providers.first()
             else -> throw IllegalStateException(
                 "Multiple classes found with @ViaductServerConfiguration annotation: ${providers.map { it::class.qualifiedName }}. " +
