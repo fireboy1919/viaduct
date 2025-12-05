@@ -113,7 +113,7 @@ or
 For interactive development with GraphiQL IDE, you can use the development server:
 
 ```shell
-./gradlew devserve
+./gradlew serve
 ```
 
 Then open `http://localhost:8080/graphiql` in your browser to explore your GraphQL API interactively.
@@ -121,10 +121,10 @@ Then open `http://localhost:8080/graphiql` in your browser to explore your Graph
 For auto-reloading during development:
 
 ```shell
-./gradlew --continuous devserve
+./gradlew --continuous serve
 ```
 
-This will automatically reload the server when you make changes to your schema or code. Learn more in the [Development Server documentation](../../../developers/devserve/).
+This will automatically reload the server when you make changes to your schema or code. Learn more in the [Development Server documentation](../../../developers/serve/).
 
 ## What's Next
 

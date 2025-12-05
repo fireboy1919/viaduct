@@ -55,8 +55,8 @@ abstract class ViaductApplicationPlugin @Inject constructor(
 
             this.dependencies.add("api", files(generateGRTsTask.flatMap { it.archiveFile }))
 
-            // Setup devserve task
-            setupDevServeTask(generateGRTsTask)
+            // Setup serve task
+            setupServeTask(generateGRTsTask)
         }
 
     private fun Project.setupAssembleCentralSchemaTask(): TaskProvider<AssembleCentralSchemaTask> {
@@ -153,9 +153,9 @@ abstract class ViaductApplicationPlugin @Inject constructor(
         }
     }
 
-    private fun Project.setupDevServeTask(generateGRTsTask: TaskProvider<Jar>) {
+    private fun Project.setupServeTask(generateGRTsTask: TaskProvider<Jar>) {
         // Create configuration at configuration time (not execution time) so dependency substitution works
-        val devserveConfig = configurations.create("devserveRuntime") {
+        val serveConfig = configurations.create("serveRuntime") {
             isCanBeConsumed = false
             isCanBeResolved = true
             isVisible = false
@@ -170,26 +170,26 @@ abstract class ViaductApplicationPlugin @Inject constructor(
             }
         }
 
-        // Add devserve dependency after evaluation
+        // Add serve dependency after evaluation
         afterEvaluate {
-            // Gradle automatically substitutes with local :devserve project in composite builds.
+            // Gradle automatically substitutes with local :serve project in composite builds.
             // External standalone projects will resolve from Maven Central.
             val version = ViaductPluginCommon.BOM.getDefaultVersion()
-            dependencies.add(devserveConfig.name, "com.airbnb.viaduct:devserve:$version")
+            dependencies.add(serveConfig.name, "com.airbnb.viaduct:serve:$version")
 
-            // Also add devserve as compileOnly so the provider class can be compiled with the annotation
-            dependencies.add("compileOnly", "com.airbnb.viaduct:devserve:$version")
+            // Also add serve as compileOnly so the provider class can be compiled with the annotation
+            dependencies.add("compileOnly", "com.airbnb.viaduct:serve:$version")
         }
 
         // PID file location for persisting server PID across task executions
-        val pidFile = layout.buildDirectory.file("devserve.pid").get().asFile
+        val pidFile = layout.buildDirectory.file("serve.pid").get().asFile
 
-        tasks.register("devserve") {
+        tasks.register("serve") {
             group = "viaduct"
             description = "Start the Viaduct development server with GraphiQL IDE (use with --continuous for hot-reloading)"
 
             // Mark as not compatible with configuration cache since it needs project access at execution time
-            notCompatibleWithConfigurationCache("devserve task requires project access at execution time")
+            notCompatibleWithConfigurationCache("serve task requires project access at execution time")
 
             // Ensure GRTs are generated and classes are compiled before starting
             dependsOn(generateGRTsTask)
@@ -203,10 +203,10 @@ abstract class ViaductApplicationPlugin @Inject constructor(
 
                 // Build full classpath - app classes first for proper ClassLoader hierarchy
                 val appClasspath = mainOutput.files + runtimeClasspath.files
-                val fullClasspath = devserveConfig.files + appClasspath
+                val fullClasspath = serveConfig.files + appClasspath
 
-                val port = project.findProperty("devserve.port")?.toString() ?: "8080"
-                val host = project.findProperty("devserve.host")?.toString() ?: "0.0.0.0"
+                val port = project.findProperty("serve.port")?.toString() ?: "8080"
+                val host = project.findProperty("serve.host")?.toString() ?: "0.0.0.0"
 
                 // In continuous mode, use hot-reload via SIGHUP
                 if (gradle.startParameter.isContinuous) {
@@ -218,7 +218,7 @@ abstract class ViaductApplicationPlugin @Inject constructor(
 
                     if (existingPid != null) {
                         // Server already running - send SIGHUP to trigger hot-reload
-                        logger.lifecycle("Sending reload signal to devserve (PID: $existingPid)...")
+                        logger.lifecycle("Sending reload signal to serve (PID: $existingPid)...")
                         try {
                             val killProcess = ProcessBuilder("kill", "-HUP", existingPid.toString())
                                 .inheritIO()
@@ -236,7 +236,7 @@ abstract class ViaductApplicationPlugin @Inject constructor(
                         }
                     } else {
                         // First run - start the server process
-                        logger.lifecycle("Starting devserve server with hot-reload support...")
+                        logger.lifecycle("Starting serve server with hot-reload support...")
 
                         val javaHome = System.getProperty("java.home")
                         val javaExec = "$javaHome/bin/java"
@@ -246,10 +246,10 @@ abstract class ViaductApplicationPlugin @Inject constructor(
                         val command = listOf(
                             javaExec,
                             "-cp", classpathString,
-                            "-Ddevserve.port=$port",
-                            "-Ddevserve.host=$host",
-                            "-Ddevserve.classpath=$appClasspathString",
-                            "viaduct.devserve.DevServeServerKt"
+                            "-Dserve.port=$port",
+                            "-Dserve.host=$host",
+                            "-Dserve.classpath=$appClasspathString",
+                            "viaduct.serve.ServeServerKt"
                         )
 
                         val serverProcess = ProcessBuilder(command)
@@ -267,23 +267,23 @@ abstract class ViaductApplicationPlugin @Inject constructor(
 
                         if (!serverProcess.isAlive) {
                             pidFile.delete()
-                            throw org.gradle.api.GradleException("DevServe server failed to start")
+                            throw org.gradle.api.GradleException("Serve server failed to start")
                         }
 
-                        logger.lifecycle("DevServe server started (PID: $serverPid)")
+                        logger.lifecycle("Serve server started (PID: $serverPid)")
                         logger.lifecycle("Hot-reload enabled - changes will be automatically reloaded")
                         logger.lifecycle("GraphiQL IDE: http://$host:$port/graphiql")
                     }
                 } else {
                     // Not in continuous mode - run directly and wait for completion
-                    logger.lifecycle("Starting devserve server...")
+                    logger.lifecycle("Starting serve server...")
                     logger.lifecycle("Tip: Run with --continuous for hot-reload support")
                     execOperations.javaexec {
                         classpath = files(fullClasspath)
-                        mainClass.set("viaduct.devserve.DevServeServerKt")
-                        systemProperty("devserve.port", port)
-                        systemProperty("devserve.host", host)
-                        systemProperty("devserve.classpath", appClasspath.joinToString(File.pathSeparator) { it.absolutePath })
+                        mainClass.set("viaduct.serve.ServeServerKt")
+                        systemProperty("serve.port", port)
+                        systemProperty("serve.host", host)
+                        systemProperty("serve.classpath", appClasspath.joinToString(File.pathSeparator) { it.absolutePath })
                     }
                 }
             }
