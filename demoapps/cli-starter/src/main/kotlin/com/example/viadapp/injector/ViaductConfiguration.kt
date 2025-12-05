@@ -6,7 +6,7 @@ import viaduct.service.api.Viaduct
 
 /**
  * Shared Viaduct configuration for the CLI Starter application.
- * Used by both the main application and DevServe.
+ * Used by both the main application and Viaduct Server.
  */
 object ViaductConfiguration {
     val viaductService: Viaduct by lazy {
