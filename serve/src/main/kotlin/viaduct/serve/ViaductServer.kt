@@ -305,11 +305,14 @@ class ViaductServer(
             }
 
             // Serve GraphiQL static resources (JS files for plugins)
+            // Resources are packaged in service-wiring module at /graphiql/js/
             get("/js/{file}") {
                 val file = call.parameters["file"]
                 if (file != null) {
                     val resourcePath = "/graphiql/js/$file"
-                    val resourceStream = this::class.java.getResourceAsStream(resourcePath)
+                    // Use multiple classloader strategies to find resources from service-wiring
+                    val resourceStream = Thread.currentThread().contextClassLoader?.getResourceAsStream(resourcePath.removePrefix("/"))
+                        ?: ViaductServer::class.java.getResourceAsStream(resourcePath)
 
                     if (resourceStream != null) {
                         val content = resourceStream.bufferedReader().use { it.readText() }
