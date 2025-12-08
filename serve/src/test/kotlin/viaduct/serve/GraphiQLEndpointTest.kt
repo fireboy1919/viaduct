@@ -232,4 +232,41 @@ class GraphiQLEndpointTest {
         val errors = result["errors"] as List<Any>
         assertTrue(errors.isEmpty(), "Errors array should be empty for successful query")
     }
+
+    @Test
+    fun `JS files should be served from service-wiring resources`() {
+        // Skip if server didn't start properly
+        if (serverPort == 0) {
+            println("Skipping test - server not started")
+            return
+        }
+
+        // Test each JS file that GraphiQL HTML references
+        val jsFiles = listOf(
+            "jsx-loader.js" to "loadJSX",
+            "introspection-patch.js" to "createPatchedFetcher",
+            "global-id-plugin.jsx" to "createGlobalIdPlugin"
+        )
+
+        for ((file, expectedContent) in jsFiles) {
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create("http://127.0.0.1:$serverPort/js/$file"))
+                .GET()
+                .timeout(Duration.ofSeconds(5))
+                .build()
+
+            val response = try {
+                httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+            } catch (e: Exception) {
+                println("Failed to fetch $file: ${e.message}")
+                throw AssertionError("Failed to fetch JS file: $file", e)
+            }
+
+            assertEquals(200, response.statusCode(), "$file should return 200 OK")
+            assertTrue(
+                response.body().contains(expectedContent),
+                "$file should contain '$expectedContent'"
+            )
+        }
+    }
 }
