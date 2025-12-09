@@ -1,9 +1,13 @@
 package viaduct.serve
 
-import java.io.File
-
 /**
  * Entry point for the Viaduct serve server.
+ *
+ * Usage (recommended):
+ *   ./gradlew --continuous :yourapp:serve
+ *
+ * This runs the server with automatic reload - when you change source files,
+ * Gradle will rebuild and restart the server automatically.
  *
  * This is the main class referenced by the viaduct-application-plugin's serve task.
  * It starts a ViaductServer that:
@@ -14,18 +18,10 @@ import java.io.File
  * System properties:
  * - serve.port: Port to bind to (default: 8080). Use 0 for any available port.
  * - serve.host: Host to bind to (default: 0.0.0.0)
- * - serve.classpath: Additional classpath entries separated by system path separator
  */
 fun main() {
     val port = System.getProperty("serve.port", "8080").toIntOrNull() ?: 8080
     val host = System.getProperty("serve.host", "0.0.0.0")
-    val classpathStr = System.getProperty("serve.classpath", "")
 
-    val classpath = if (classpathStr.isNotEmpty()) {
-        classpathStr.split(File.pathSeparator).map { File(it) }
-    } else {
-        emptyList()
-    }
-
-    ViaductServer(port = port, host = host, classpath = classpath).start()
+    ViaductServer(port = port, host = host).start()
 }

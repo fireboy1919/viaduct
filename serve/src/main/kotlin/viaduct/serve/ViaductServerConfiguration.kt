@@ -1,10 +1,10 @@
 package viaduct.serve
 
 /**
- * Marks a class as a Viaduct Server Viaduct provider.
+ * Marks a class as a Viaduct serve server provider.
  *
- * The annotated class must implement [ViaductServerProvider] and provide
- * a no-argument constructor. Viaduct Server will:
+ * The annotated class must implement [ViaductServerProvider] and have
+ * a no-argument constructor. The serve server will:
  * 1. Scan the classpath for classes with this annotation
  * 2. Instantiate the annotated class
  * 3. Call [ViaductServerProvider.getViaduct] to obtain the Viaduct instance
@@ -12,7 +12,7 @@ package viaduct.serve
  * Example:
  * ```kotlin
  * @ViaductServerConfiguration
- * class MyViaduct ServerConfig : ViaductServerProvider {
+ * class MyServerProvider : ViaductServerProvider {
  *     override fun getViaduct(): Viaduct {
  *         val context = ApplicationContext.run()
  *         return context.getBean(Viaduct::class.java)

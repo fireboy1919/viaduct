@@ -20,17 +20,25 @@ import viaduct.service.api.Viaduct
  * Limitations:
  * - Only works with resolvers that have no-argument constructors
  * - Cannot inject dependencies into resolvers
- * - For more complex setups, create a custom ViaductServerProvider
+ * - For more complex setups, create a @ViaductServerConfiguration class
  */
 internal class DefaultViaductFactory : ViaductServerProvider {
 
     private val logger = LoggerFactory.getLogger(DefaultViaductFactory::class.java)
 
     override fun getViaduct(): Viaduct {
-        logger.info("No @ViaductServerConfiguration found. Using default classpath scanning.")
-        logger.info("NOTE: Default mode only works with @Resolver classes that have zero-argument constructors.")
-        logger.info("For dependency injection or custom configuration, create a class implementing ViaductServerProvider")
-        logger.info("and annotate it with @ViaductServerConfiguration.")
+        logger.warn("╔════════════════════════════════════════════════════════════════════════════╗")
+        logger.warn("║  NO @ViaductServerConfiguration FOUND - USING DEFAULT CLASSPATH SCANNING  ║")
+        logger.warn("╠════════════════════════════════════════════════════════════════════════════╣")
+        logger.warn("║  ⚠️  DEPENDENCY INJECTION IS NOT AVAILABLE IN THIS MODE                    ║")
+        logger.warn("║                                                                            ║")
+        logger.warn("║  Only @Resolver classes with zero-argument constructors will work.        ║")
+        logger.warn("║  If your resolvers require injected dependencies, they will fail.         ║")
+        logger.warn("║                                                                            ║")
+        logger.warn("║  To enable DI, create a class annotated with @ViaductServerConfiguration  ║")
+        logger.warn("║  that implements ViaductServerProvider and returns your Viaduct instance. ║")
+        logger.warn("║  See: https://viaduct.dev/docs/developers/serve                           ║")
+        logger.warn("╚════════════════════════════════════════════════════════════════════════════╝")
 
         // Discover resolvers
         val resolvers = discoverResolvers()

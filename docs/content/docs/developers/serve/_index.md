@@ -8,8 +8,8 @@ weight: 100
 
 The `serve` task provides a development server for Viaduct applications with:
 - **GraphiQL IDE**: Interactive GraphQL explorer in your browser
-- **Auto-reloading**: Automatic reloading when schema or code changes
-- **Zero configuration**: Works out-of-the-box with any Viaduct application
+- **Auto-reloading**: Automatic rebuild and restart when code changes
+- **Zero configuration**: Works out-of-the-box for simple applications
 
 ## Prerequisites
 
@@ -21,29 +21,112 @@ plugins {
 }
 ```
 
-## Basic Usage
+## Quick Start (Recommended)
 
-### Running the Server
-
-To start the development server:
+Start the development server with automatic reloading:
 
 ```shell
-./gradlew serve
+./gradlew --continuous serve
 ```
 
-The server will start on `http://localhost:8080` by default and provide:
+This is the recommended way to run the development server. When you change source files:
+1. Gradle detects the change
+2. Rebuilds the affected code
+3. Restarts the server automatically
+
+The server provides:
 - GraphQL endpoint: `http://localhost:8080/graphql`
 - GraphiQL IDE: `http://localhost:8080/graphiql`
 - Health check: `http://localhost:8080/health`
 
-Press `Ctrl+C` to stop the server.
+Press `Ctrl+C` to stop.
+
+## Configuring Dependency Injection
+
+### Using @ViaductServerConfiguration
+
+To enable dependency injection in your resolvers, create a class annotated with `@ViaductServerConfiguration` that implements `ViaductServerProvider`:
+
+```kotlin
+import viaduct.serve.ViaductServerConfiguration
+import viaduct.serve.ViaductServerProvider
+import viaduct.service.api.Viaduct
+
+@ViaductServerConfiguration
+class MyServerProvider : ViaductServerProvider {
+    override fun getViaduct(): Viaduct {
+        // Return your Viaduct instance configured with DI
+        return myDiFramework.getBean(Viaduct::class.java)
+    }
+}
+```
+
+The serve server automatically discovers your implementation via classpath scanning for the annotation.
+
+### Example: Micronaut Integration
+
+```kotlin
+@ViaductServerConfiguration
+class MicronautServerProvider : ViaductServerProvider {
+    override fun getViaduct(): Viaduct {
+        val context = ApplicationContext.builder()
+            .packages(
+                "com.example.app.injector",
+                "com.example.app.resolvers"
+            )
+            .start()
+        return context.getBean(Viaduct::class.java)
+    }
+}
+```
+
+### Example: Manual Configuration
+
+```kotlin
+@ViaductServerConfiguration
+class MyServerProvider : ViaductServerProvider {
+    override fun getViaduct(): Viaduct {
+        return ViaductBuilder()
+            .withTenantModule(MyTenantModule())
+            .build()
+    }
+}
+```
+
+### Without @ViaductServerConfiguration (Default Mode)
+
+If no `@ViaductServerConfiguration` annotated class is found, the serve server falls back to default classpath scanning mode. In this mode:
+
+- **Dependency injection is NOT available**
+- Only `@Resolver` classes with zero-argument constructors work
+- Resolvers requiring injected dependencies will fail
+
+You will see this warning when running in default mode:
+
+```
+╔════════════════════════════════════════════════════════════════════════════╗
+║  NO @ViaductServerConfiguration FOUND - USING DEFAULT CLASSPATH SCANNING  ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║  DEPENDENCY INJECTION IS NOT AVAILABLE IN THIS MODE                        ║
+║                                                                            ║
+║  Only @Resolver classes with zero-argument constructors will work.        ║
+║  If your resolvers require injected dependencies, they will fail.         ║
+║                                                                            ║
+║  To enable DI, create a class annotated with @ViaductServerConfiguration  ║
+║  that implements ViaductServerProvider and returns your Viaduct instance. ║
+╚════════════════════════════════════════════════════════════════════════════╝
+```
+
+**Recommendation**: If your resolvers have any dependencies, create a `@ViaductServerConfiguration` class.
+
+## Configuration Options
 
 ### Custom Port and Host
 
-You can customize the port and host using Gradle properties:
+Customize the port and host using Gradle properties:
 
 ```shell
-./gradlew serve -Pserve.port=3000 -Pserve.host=127.0.0.1
+./gradlew --continuous serve -Pserve.port=3000 -Pserve.host=127.0.0.1
 ```
 
 Or set them in your `gradle.properties` file:
@@ -53,34 +136,9 @@ serve.port=3000
 serve.host=127.0.0.1
 ```
 
-## Auto-Reloading with Continuous Mode
+## Development Workflow
 
-For development workflows with automatic reloading when files change, use Gradle's continuous mode:
-
-```shell
-./gradlew --continuous serve
-```
-
-In continuous mode:
-1. Gradle watches all input files (schema files, Kotlin source code, etc.)
-2. When changes are detected, Gradle automatically:
-   - Regenerates GRT classes if schema files changed
-   - Recompiles Kotlin code if source files changed
-   - Restarts the serve server with fresh code
-3. The browser automatically reconnects to the new server instance
-
-This provides a fast development loop where you can edit schema and code files and see changes reflected immediately.
-
-### What Gets Watched
-
-Continuous mode watches:
-- **GraphQL schema files** (`.graphqls`) in all modules
-- **Kotlin source files** in `src/main/kotlin`
-- **Resource files** referenced by the application
-
-### Development Workflow
-
-A typical development workflow with auto-reloading:
+### Recommended Workflow
 
 1. Start the server in continuous mode:
    ```shell
@@ -98,9 +156,16 @@ A typical development workflow with auto-reloading:
    }
    ```
 
-4. Gradle automatically detects the change, regenerates code, and restarts the server
+4. Gradle automatically detects the change, rebuilds, and restarts the server
 
 5. Refresh GraphiQL to see the new field in the schema
+
+### What Gets Watched
+
+Continuous mode watches:
+- **GraphQL schema files** (`.graphqls`) in all modules
+- **Kotlin source files** in `src/main/kotlin`
+- **Resource files** referenced by the application
 
 ## Using GraphiQL
 
@@ -138,6 +203,16 @@ If port 8080 is already in use, either:
 - Stop the process using the port
 - Use a different port with `-Pserve.port=<port>`
 
+### Running Without Continuous Mode
+
+If you need to run the server without auto-reloading:
+
+```shell
+./gradlew serve
+```
+
+Note: In this mode, you must manually stop and restart the server after making changes.
+
 ### Server Not Restarting in Continuous Mode
 
 If the server doesn't restart after changes:
@@ -151,7 +226,14 @@ If the server doesn't restart after changes:
 If code changes don't appear in GraphiQL:
 1. Hard refresh your browser (`Cmd+Shift+R` or `Ctrl+Shift+F5`)
 2. Check the Gradle output for any errors during recompilation
-3. Verify the server actually restarted (look for "Starting serve server..." in logs)
+3. Verify the server actually restarted (look for "Starting Viaduct Development Server..." in logs)
+
+### Resolver Instantiation Errors
+
+If you see errors about resolvers failing to instantiate:
+1. Check if your resolvers require dependencies (constructor parameters)
+2. If yes, create a `@ViaductServerConfiguration` class to enable DI
+3. Verify your DI framework is configured correctly
 
 ## Comparison with Production
 

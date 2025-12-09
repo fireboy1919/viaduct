@@ -40,7 +40,7 @@ micronaut-starter/
 ## How It Works
 
 1. `MicronautServerProvider` is annotated with `@ViaductServerConfiguration`
-2. When ViaductServer starts, it discovers this provider
+2. When the serve server starts, it discovers this provider via classpath scanning
 3. The provider calls `ApplicationContext.run()` (DI only, no HTTP server)
 4. The `Viaduct` bean is retrieved from the DI container
-5. ViaductServer uses this Viaduct instance to serve GraphQL requests
+5. The serve server uses this Viaduct instance to serve GraphQL requests

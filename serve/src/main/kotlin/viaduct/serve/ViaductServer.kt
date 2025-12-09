@@ -22,11 +22,8 @@ import io.ktor.serialization.jackson.jackson
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
-import sun.misc.Signal
 import viaduct.service.api.ExecutionInput
 import viaduct.service.api.Viaduct
-import java.io.File
-import java.net.URLClassLoader
 
 /**
  * Development server for Viaduct applications.
@@ -35,23 +32,18 @@ import java.net.URLClassLoader
  * - GraphQL endpoint at POST /graphql
  * - GraphiQL IDE at GET /graphiql
  * - Health check at GET /health
- * - Hot-reload via SIGHUP signal
+ *
+ * For hot-reload, use `./gradlew --continuous :yourapp:serve` which will
+ * restart the server when source files change.
  */
 class ViaductServer(
     private val port: Int = 8080,
-    private val host: String = "0.0.0.0",
-    private val classpath: List<File> = emptyList()
+    private val host: String = "0.0.0.0"
 ) {
     private val logger = LoggerFactory.getLogger(ViaductServer::class.java)
     private val objectMapper: ObjectMapper = jacksonObjectMapper()
 
-    // Volatile for thread-safe access during hot-reload
-    @Volatile
     private var viaduct: Viaduct? = null
-
-    // ClassLoader for application classes - replaced on reload
-    private var appClassLoader: URLClassLoader? = null
-
     private var server: io.ktor.server.engine.EmbeddedServer<*, *>? = null
     var actualPort: Int = 0
         private set
@@ -68,20 +60,22 @@ class ViaductServer(
         logger.info("Starting Viaduct Development Server...")
 
         try {
-            // Register signal handler for hot-reload (SIGHUP on Unix)
-            registerSignalHandler()
+            // Discover and instantiate ViaductServerProvider
+            logger.info("Discovering ViaductServerProvider...")
+            val provider = FactoryDiscovery.discoverProvider()
+            logger.info("Found provider: ${provider::class.qualifiedName}")
 
-            // Initial load
-            reload()
+            // Get Viaduct instance from provider
+            logger.info("Getting Viaduct instance from provider...")
+            viaduct = provider.getViaduct()
+            logger.info("Viaduct instance obtained successfully")
 
             // Capture references for use in server configuration
             val loggerRef = logger
             val mapperRef = objectMapper
-            val hostRef = host
-            val portRef = port
 
             // Start the server
-            server = embeddedServer(Netty, port = portRef, host = hostRef) {
+            server = embeddedServer(Netty, port = port, host = host) {
                 configureApplication(loggerRef, mapperRef)
             }
 
@@ -93,99 +87,30 @@ class ViaductServer(
                 (server!!.engine as io.ktor.server.netty.NettyApplicationEngine).resolvedConnectors().first().port
             }
 
-            if (portRef == 0) {
-                loggerRef.info("Viaduct Viaduct Server running on dynamically assigned port: $actualPort")
+            if (port == 0) {
+                loggerRef.info("Viaduct Development Server running on dynamically assigned port: $actualPort")
             } else {
-                loggerRef.info("Viaduct Viaduct Server running on port: $actualPort")
+                loggerRef.info("Viaduct Development Server running on port: $actualPort")
             }
-            loggerRef.info("Server address: http://$hostRef:$actualPort")
-            loggerRef.info("GraphiQL IDE: http://$hostRef:$actualPort/graphiql")
-            loggerRef.info("Hot-reload enabled: send SIGHUP to reload (kill -HUP ${ProcessHandle.current().pid()})")
+            loggerRef.info("Server address: http://$host:$actualPort")
+            loggerRef.info("GraphiQL IDE: http://$host:$actualPort/graphiql")
+            loggerRef.info("")
+            loggerRef.info("TIP: For automatic reload on code changes, use: ./gradlew --continuous :yourapp:serve")
 
             // Add shutdown hook
             Runtime.getRuntime().addShutdownHook(Thread {
                 server?.let {
-                    loggerRef.info("Shutting down Viaduct Viaduct Server...")
+                    loggerRef.info("Shutting down Viaduct Development Server...")
                     it.stop(1000, 2000)
                 }
-                appClassLoader?.close()
             })
 
             // Wait for the server to finish
             Thread.currentThread().join()
 
         } catch (e: Exception) {
-            logger.error("Failed to start Viaduct Server server", e)
+            logger.error("Failed to start Viaduct Development Server", e)
             throw e
-        }
-    }
-
-    /**
-     * Registers a signal handler for SIGHUP to trigger hot-reload.
-     */
-    private fun registerSignalHandler() {
-        try {
-            Signal.handle(Signal("HUP")) {
-                logger.info("Received SIGHUP signal, reloading...")
-                try {
-                    reload()
-                    logger.info("Hot-reload completed successfully")
-                } catch (e: Exception) {
-                    logger.error("Hot-reload failed", e)
-                }
-            }
-            logger.info("SIGHUP handler registered for hot-reload")
-        } catch (e: Exception) {
-            logger.warn("Could not register SIGHUP handler (may not be supported on this platform): ${e.message}")
-        }
-    }
-
-    /**
-     * Reloads the Viaduct instance using a fresh ClassLoader.
-     * This allows picking up newly compiled classes without restarting the server.
-     */
-    @Synchronized
-    fun reload() {
-        logger.info("Loading Viaduct...")
-
-        // Close old ClassLoader if exists
-        appClassLoader?.let {
-            logger.debug("Closing previous ClassLoader")
-            try {
-                it.close()
-            } catch (e: Exception) {
-                logger.warn("Error closing previous ClassLoader", e)
-            }
-        }
-
-        // Create new ClassLoader if classpath is provided
-        val classLoader = if (classpath.isNotEmpty()) {
-            val urls = classpath.map { it.toURI().toURL() }.toTypedArray()
-            logger.debug("Creating new ClassLoader with ${urls.size} classpath entries")
-            URLClassLoader(urls, this::class.java.classLoader).also {
-                appClassLoader = it
-            }
-        } else {
-            // Use default ClassLoader (for testing or when classpath not specified)
-            Thread.currentThread().contextClassLoader ?: this::class.java.classLoader
-        }
-
-        // Set as context ClassLoader for this thread
-        val previousClassLoader = Thread.currentThread().contextClassLoader
-        try {
-            Thread.currentThread().contextClassLoader = classLoader
-
-            // Discover and instantiate ViaductServerProvider
-            logger.info("Discovering ViaductServerProvider...")
-            val provider = FactoryDiscovery.discoverProvider()
-            logger.info("Found provider: ${provider::class.qualifiedName}")
-
-            // Get Viaduct instance from provider (pulls from DI framework)
-            logger.info("Getting Viaduct instance from provider...")
-            viaduct = provider.getViaduct()
-            logger.info("Viaduct instance obtained successfully")
-        } finally {
-            Thread.currentThread().contextClassLoader = previousClassLoader
         }
     }
 
@@ -195,17 +120,14 @@ class ViaductServer(
      */
     fun stop() {
         server?.let {
-            logger.info("Stopping Viaduct Viaduct Server...")
+            logger.info("Stopping Viaduct Development Server...")
             it.stop(1000, 2000)
             server = null
         }
-        appClassLoader?.close()
-        appClassLoader = null
     }
 
     /**
      * Configures the Ktor application.
-     * Note: Uses the volatile viaduct reference to support hot-reload.
      */
     private fun Application.configureApplication(
         loggerRef: org.slf4j.Logger,
@@ -224,18 +146,6 @@ class ViaductServer(
             // Health check endpoint
             get("/health") {
                 call.respondText("OK", ContentType.Text.Plain, HttpStatusCode.OK)
-            }
-
-            // Reload endpoint (alternative to SIGHUP)
-            post("/reload") {
-                loggerRef.info("Reload requested via HTTP")
-                try {
-                    reload()
-                    call.respondText("Reloaded successfully", ContentType.Text.Plain, HttpStatusCode.OK)
-                } catch (e: Exception) {
-                    loggerRef.error("Reload failed", e)
-                    call.respondText("Reload failed: ${e.message}", ContentType.Text.Plain, HttpStatusCode.InternalServerError)
-                }
             }
 
             // GraphQL endpoint

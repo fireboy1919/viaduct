@@ -45,9 +45,15 @@ class ViaductTenantResolverClassFinder(
             classLoader = urlClassLoader
             classGraphScan = urlClassGraphScan
         } else {
-            log.info("Using standard ClassLoader for $packageName")
+            log.info("Using context ClassLoader for $packageName")
             classLoader = ctxClassLoader
+            // Use overrideClassLoaders to ensure ClassGraph uses the context classloader
+            // This is essential for hot-reload support in serve mode
+            // ignoreParentClassLoaders() ensures we only scan the child classloader's URLs,
+            // not the parent's classes - critical for hot-reload to pick up fresh classes
             classGraphScan = ClassGraph()
+                .overrideClassLoaders(ctxClassLoader)
+                .ignoreParentClassLoaders()
                 .enableAnnotationInfo()
                 .acceptPackages(packageName)
                 .scan()
