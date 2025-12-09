@@ -244,7 +244,6 @@ class GraphiQLEndpointTest {
         // Test each JS file that GraphiQL HTML references
         val jsFiles = listOf(
             "jsx-loader.js" to "loadJSX",
-            "introspection-patch.js" to "createPatchedFetcher",
             "global-id-plugin.jsx" to "createGlobalIdPlugin"
         )
 
