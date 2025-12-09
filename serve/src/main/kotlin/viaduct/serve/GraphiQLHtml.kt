@@ -7,7 +7,6 @@ import viaduct.service.wiring.graphiql.graphiQLHtml as serviceWiringGraphiQLHtml
  *
  * Delegates to the GraphiQL resources provided by the service-wiring module.
  * The HTML includes Viaduct customizations:
- * - introspection-patch.js: Patches GraphQL Java introspection responses for GraphiQL 5 compatibility
  * - global-id-plugin.jsx: Provides Global ID encode/decode utilities
  *
  * @return The GraphiQL HTML content
