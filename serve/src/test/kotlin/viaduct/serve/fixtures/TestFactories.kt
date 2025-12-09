@@ -25,18 +25,7 @@ class ValidTestProvider : ViaductServerProvider {
 }
 
 /**
- * Test fixture: Another valid provider without annotation
- * (To test multiple provider detection, this would need to be annotated,
- * but leaving it unannotated allows other tests to pass)
- */
-class AnotherValidTestProvider : ViaductServerProvider {
-    override fun getViaduct(): Viaduct {
-        throw NotImplementedError("Test provider - should not be called")
-    }
-}
-
-/**
- * Test fixture: Provider without annotation (should be ignored)
+ * Test fixture: Provider without annotation (should be ignored).
  */
 class ProviderWithoutAnnotation : ViaductServerProvider {
     override fun getViaduct(): Viaduct {
@@ -45,7 +34,7 @@ class ProviderWithoutAnnotation : ViaductServerProvider {
 }
 
 /**
- * Test fixture: Annotated class that doesn't implement ViaductServerProvider
+ * Test fixture: Annotated class that doesn't implement ViaductServerProvider.
  */
 @ViaductServerConfiguration
 class AnnotatedNonProvider {
@@ -53,7 +42,8 @@ class AnnotatedNonProvider {
 }
 
 /**
- * Test fixture: Provider without no-arg constructor
+ * Test fixture: Provider without no-arg constructor.
+ * This should be skipped during discovery with a warning.
  */
 @ViaductServerConfiguration
 class ProviderWithoutNoArgConstructor(private val param: String) : ViaductServerProvider {

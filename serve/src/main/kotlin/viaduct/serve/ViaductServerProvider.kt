@@ -3,20 +3,21 @@ package viaduct.serve
 import viaduct.service.api.Viaduct
 
 /**
- * Interface for providing a Viaduct instance to Viaduct Server.
+ * Interface for providing a Viaduct instance to the serve server.
  *
- * Implementations should start their DI framework (e.g., Micronaut)
- * and return the Viaduct bean from the DI context.
+ * Implement this interface and annotate with [@ViaductServerConfiguration] to integrate
+ * your DI framework with the serve server. The server discovers your implementation
+ * via classpath scanning for the annotation.
  *
- * This approach is simpler than implementing a factory because:
- * - The Viaduct is already configured through your DI framework
- * - No need to duplicate configuration between production and serve
- * - Just pull the same Viaduct bean that production uses
+ * **Why use this?**
+ * - Enables dependency injection in your resolvers
+ * - Uses the same Viaduct configuration as production
+ * - No need to duplicate configuration
  *
- * Example with Micronaut:
+ * **Example with Micronaut:**
  * ```kotlin
  * @ViaductServerConfiguration
- * class MyViaduct ServerConfig : ViaductServerProvider {
+ * class MyServerProvider : ViaductServerProvider {
  *     override fun getViaduct(): Viaduct {
  *         val context = ApplicationContext.run()
  *         return context.getBean(Viaduct::class.java)
@@ -24,16 +25,33 @@ import viaduct.service.api.Viaduct
  * }
  * ```
  *
+ * **Example with manual configuration:**
+ * ```kotlin
+ * @ViaductServerConfiguration
+ * class MyServerProvider : ViaductServerProvider {
+ *     override fun getViaduct(): Viaduct {
+ *         return ViaductBuilder()
+ *             .withTenantModule(MyTenantModule())
+ *             .build()
+ *     }
+ * }
+ * ```
+ *
+ * **Without @ViaductServerConfiguration:**
+ * If no annotated implementation is found, serve falls back to [DefaultViaductFactory]
+ * which scans for @Resolver classes with zero-argument constructors.
+ * This mode does NOT support dependency injection.
+ *
  * @see ViaductServerConfiguration
  */
 interface ViaductServerProvider {
     /**
-     * Returns the Viaduct instance to be used by Viaduct Server.
+     * Returns the Viaduct instance to be used by the serve server.
      *
-     * This method is called once during Viaduct Server startup and after each hot-reload.
-     * The implementation should start the DI context and return the Viaduct bean.
+     * This method is called once during serve startup.
+     * The implementation should initialize any DI context and return the Viaduct instance.
      *
-     * @return The Viaduct instance configured through your DI framework
+     * @return The Viaduct instance to use for serving GraphQL requests
      */
     fun getViaduct(): Viaduct
 }

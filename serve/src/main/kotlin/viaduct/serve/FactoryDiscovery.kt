@@ -30,7 +30,10 @@ object FactoryDiscovery {
                 logger.info("No @ViaductServerConfiguration found, using default classpath scanning")
                 DefaultViaductFactory()
             }
-            1 -> providers.first()
+            1 -> {
+                logger.info("Found @ViaductServerConfiguration: ${providers.first()::class.qualifiedName}")
+                providers.first()
+            }
             else -> throw IllegalStateException(
                 "Multiple classes found with @ViaductServerConfiguration annotation: ${providers.map { it::class.qualifiedName }}. " +
                 "Only one provider should be annotated with @ViaductServerConfiguration per application."
