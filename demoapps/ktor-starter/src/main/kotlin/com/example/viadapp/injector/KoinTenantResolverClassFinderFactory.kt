@@ -1,24 +1,22 @@
 package com.example.viadapp.injector
 
+import org.koin.core.Koin
 import viaduct.tenant.runtime.bootstrap.TenantResolverClassFinder
 import viaduct.tenant.runtime.bootstrap.TenantResolverClassFinderFactory
 
 /**
- * A [TenantResolverClassFinderFactory] that creates finders using explicitly
- * registered resolver classes from Koin, rather than classpath scanning.
+ * A [TenantResolverClassFinderFactory] that creates finders backed by Koin.
  *
- * @param resolverClasses The set of resolver classes registered in Koin
+ * This factory passes the Koin instance to [KoinTenantResolverClassFinder],
+ * which queries Koin's registry for resolver classes.
+ *
+ * @param koin The Koin instance to use for resolver discovery
  */
 class KoinTenantResolverClassFinderFactory(
-    private val resolverClasses: Set<Class<*>>
+    private val koin: Koin
 ) : TenantResolverClassFinderFactory {
 
     override fun create(packageName: String): TenantResolverClassFinder {
-        // Filter resolvers to those in the requested package
-        val filteredClasses = resolverClasses.filter {
-            it.name.startsWith(packageName)
-        }.toSet()
-
-        return KoinTenantResolverClassFinder(filteredClasses)
+        return KoinTenantResolverClassFinder(koin)
     }
 }
