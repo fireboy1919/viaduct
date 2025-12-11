@@ -7,3 +7,7 @@ plugins {
 viaductModule {
     modulePackageSuffix.set("resolvers")
 }
+
+dependencies {
+    implementation(libs.koin.core)
+}
