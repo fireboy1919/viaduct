@@ -1,6 +1,11 @@
 package com.example.viadapp.serve
 
-import com.example.viadapp.injector.ViaductConfiguration
+import com.example.viadapp.di.viaductModule
+import com.example.viadapp.resolvers.di.resolversModule
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
+import org.koin.core.context.GlobalContext
+import org.koin.core.context.startKoin
 import viaduct.serve.ViaductServerConfiguration
 import viaduct.serve.ViaductServerProvider
 import viaduct.service.api.Viaduct
@@ -8,13 +13,31 @@ import viaduct.service.api.Viaduct
 /**
  * Viaduct Server provider for the Ktor Starter application.
  *
- * Uses the application's ViaductConfiguration singleton to get the Viaduct instance,
- * ensuring consistent configuration with the main application.
+ * This provider initializes Koin (if not already started) and retrieves
+ * the Viaduct instance from Koin. This is analogous to how Spring would
+ * manage Viaduct in the starwars demo app.
+ *
+ * **Key design:** The Viaduct is a Koin-managed singleton, configured to use
+ * Koin for both resolver discovery and instantiation. No classpath scanning.
+ *
+ * When running via:
+ * - **Serve mode** (`./gradlew serve`): Koin is initialized here
+ * - **Ktor mode** (`./gradlew run`): Koin is already initialized by Plugins.kt
  */
 @ViaductServerConfiguration
-class KtorStarterServerProvider : ViaductServerProvider {
-    override fun getViaduct(): Viaduct {
-        // Use the same ViaductConfiguration as the main app
-        return ViaductConfiguration.viaductService
+class KtorStarterServerProvider : ViaductServerProvider, KoinComponent {
+
+    // Lazy inject Viaduct from Koin
+    private val viaduct: Viaduct by inject()
+
+    init {
+        // Initialize Koin if not already started (for serve mode)
+        if (GlobalContext.getOrNull() == null) {
+            startKoin {
+                modules(resolversModule, viaductModule)
+            }
+        }
     }
+
+    override fun getViaduct(): Viaduct = viaduct
 }
