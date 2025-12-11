@@ -21,12 +21,18 @@ private const val TENANT_PACKAGE_PREFIX = "com.example.viadapp"
  * Viaduct handles discovery automatically via classpath scanning.
  */
 val viaductModule = module {
+    // Register the Koin instance itself so it can be injected
+    single { getKoin() }
+
+    // Register the tenant code injector - needs Koin instance for on-demand resolution
+    single { KoinTenantCodeInjector(get()) }
+
     single<Viaduct> {
-        val koin = getKoin()
+        val tenantCodeInjector: KoinTenantCodeInjector = get()
 
         val tenantAPIBootstrapper = ViaductTenantAPIBootstrapper.Builder()
             .tenantPackagePrefix(TENANT_PACKAGE_PREFIX)
-            .tenantCodeInjector(KoinTenantCodeInjector(koin))
+            .tenantCodeInjector(tenantCodeInjector)
             .create()
 
         val schemaConfiguration = SchemaConfiguration.fromResources(
